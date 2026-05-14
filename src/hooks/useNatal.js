@@ -3,7 +3,7 @@
  * Manages natal chart state with localStorage persistence.
  */
 import { useState, useEffect } from 'react';
-import { generateNatalChart } from '../lib/natal.js';
+import { generateNatalChart, generatePrecisionNatalChart } from '../lib/natal.js';
 import { auth, db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -22,7 +22,9 @@ export function useNatal() {
       if (raw) {
         const chart = JSON.parse(raw);
         // Sanity check: ensure the chart isn't corrupted with NaNs
-        if (chart?.positions?.sun != null && !isNaN(chart.positions.sun)) {
+        // Check for both legacy and new structure (positions.Sun vs positions.sun)
+        const hasSun = chart?.positions?.Sun || chart?.positions?.sun;
+        if (hasSun != null) {
           setNatalChart(chart);
         } else {
           localStorage.removeItem(STORAGE_KEY);
@@ -43,8 +45,9 @@ export function useNatal() {
         unsubscribe = onSnapshot(ref, (snap) => {
           if (snap.exists()) {
             const data = snap.data();
+            const hasSun = data?.positions?.Sun || data?.positions?.sun;
             // Only update if it's a valid chart (ignore soft-deletes)
-            if (data?.positions?.sun != null && !data._deleted) {
+            if (hasSun != null && !data._deleted) {
               setNatalChart(data);
               localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             }
@@ -65,7 +68,12 @@ export function useNatal() {
     setLoading(true);
     setError(null);
     try {
-      const chart = generateNatalChart(birthData, { sidereal: birthData.sidereal });
+      let chart;
+      if (birthData.precision) {
+        chart = await generatePrecisionNatalChart(birthData, { sidereal: birthData.sidereal });
+      } else {
+        chart = generateNatalChart(birthData, { sidereal: birthData.sidereal });
+      }
       
       // Save local first for instant UX
       localStorage.setItem(STORAGE_KEY, JSON.stringify(chart));

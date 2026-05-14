@@ -7,7 +7,7 @@ import {
   groupAspectsByNature,
   PLANET_META,
 } from '../lib/synastry.js';
-import { isGeminiConfigured, generateSynastryReading } from '../lib/gemini';
+import { isOracleConfigured as isGeminiConfigured, generateSynastryReading } from '../lib/oracle';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import EphiDatePicker from '../components/EphiDatePicker.jsx';
 import EphiTimePicker from '../components/EphiTimePicker.jsx';
@@ -153,8 +153,12 @@ export default function SynastryPage() {
   const [geminiLoading, setGeminiLoading] = useState(false);
   const [geminiError,   setGeminiError]   = useState('');
   const [partners,      setPartners]      = useState([]);
+  const [puristMode,    setPuristMode]    = useState(false);
 
   useEffect(() => {
+    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    setPuristMode(settings.puristMode || false);
+
     const natal = getNatalA();
     setNatalA(natal);
     if (natal?.meta?.birthCity) setNameA('You');

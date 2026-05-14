@@ -3,7 +3,7 @@ import { castHoraryChart, judgeChart, HOUSE_TOPICS } from '../lib/horary';
 import { getHoraryStrictures } from '../lib/hellenistic';
 import { UiIcon, PlanetIcon } from '../components/EphiIcons';
 import ChartWheel from '../components/ChartWheel';
-import { generateHoraryReading, continueHoraryReading, isGeminiConfigured } from '../lib/gemini';
+import { generateHoraryReading, continueHoraryReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 
 export default function HoraryPage() {
@@ -22,8 +22,12 @@ export default function HoraryPage() {
   const [followUpMsg, setFollowUpMsg] = useState('');
   const [isContinuing, setIsContinuing] = useState(false);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState(-1);
+  const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
+    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    setPuristMode(settings.puristMode || false);
+
     try {
       const cached = localStorage.getItem('astro_horary_history');
       if (cached) setHistory(JSON.parse(cached));
@@ -444,84 +448,86 @@ export default function HoraryPage() {
             </div>
           </div>
 
-          <div className="horary-ai-reading-section" style={{ marginTop: '3rem', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
-            {!aiReading && !isGenerating && isGeminiConfigured() && (
-              <div style={{ textAlign: 'center' }}>
-                <button className="btn btn-primary" onClick={handleAiReading} style={{ width: 'auto' }}>
-                  <UiIcon name="sparkle" size={18} style={{ marginRight: 8 }} />
-                  Synthesize Detailed Oracle Judgment
-                </button>
-                <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
-                  Gemini will analyze all technical indicators into a comprehensive essay.
-                </p>
-              </div>
-            )}
-
-            {isGenerating && (
-              <div style={{ textAlign: 'center', padding: '2rem' }}>
-                <div className="spinner" style={{ margin: '0 auto 1rem' }} />
-                <p style={{ color: 'var(--accent)', fontFamily: 'var(--font-serif)', fontSize: '1.2rem' }}>
-                  Consulting the Oracle…
-                </p>
-              </div>
-            )}
-
-            {aiError && <div className="synastry-error-box" style={{ marginTop: '1rem' }}>{aiError}</div>}
-
-            {aiReading && (
-              <div className="horary-ai-reading-content">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                  <div className="section-label" style={{ textAlign: 'left', marginBottom: 0 }}>Oracle Dialogue</div>
-                  <button className="btn btn-ghost" onClick={() => window.print()} style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
-                    <UiIcon name="pin" size={12} style={{ marginRight: 6 }} />
-                    Print to Grimoire
+          {!puristMode && (
+            <div className="horary-ai-reading-section" style={{ marginTop: '3rem', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
+              {!aiReading && !isGenerating && isGeminiConfigured() && (
+                <div style={{ textAlign: 'center' }}>
+                  <button className="btn btn-primary" onClick={handleAiReading} style={{ width: 'auto' }}>
+                    <UiIcon name="sparkle" size={18} style={{ marginRight: 8 }} />
+                    Synthesize Detailed Oracle Judgment
                   </button>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+                    Gemini will analyze all technical indicators into a comprehensive essay.
+                  </p>
                 </div>
-                
-                <div className="horary-chat-thread">
-                  {chatHistory.map((msg, i) => (
-                    <div key={i} className={`horary-chat-bubble ${msg.role}`}>
-                      {msg.role === 'assistant' ? (
-                        <EphiMarkdown text={msg.text} />
-                      ) : (
-                        <div className="user-followup-text">“{msg.text}”</div>
-                      )}
-                    </div>
-                  ))}
+              )}
+
+              {isGenerating && (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div className="spinner" style={{ margin: '0 auto 1rem' }} />
+                  <p style={{ color: 'var(--accent)', fontFamily: 'var(--font-serif)', fontSize: '1.2rem' }}>
+                    Consulting the Oracle…
+                  </p>
+                </div>
+              )}
+
+              {aiError && <div className="synastry-error-box" style={{ marginTop: '1rem' }}>{aiError}</div>}
+
+              {aiReading && (
+                <div className="horary-ai-reading-content">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                    <div className="section-label" style={{ textAlign: 'left', marginBottom: 0 }}>Oracle Dialogue</div>
+                    <button className="btn btn-ghost" onClick={() => window.print()} style={{ padding: '0.4rem 0.8rem', fontSize: '0.75rem' }}>
+                      <UiIcon name="pin" size={12} style={{ marginRight: 6 }} />
+                      Print to Grimoire
+                    </button>
+                  </div>
                   
-                  {isContinuing && (
-                    <div className="horary-chat-bubble assistant">
-                      <div className="spinner-small" style={{ marginBottom: '0.5rem' }} />
-                      <p style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>The Oracle is contemplating...</p>
-                    </div>
-                  )}
-                </div>
+                  <div className="horary-chat-thread">
+                    {chatHistory.map((msg, i) => (
+                      <div key={i} className={`horary-chat-bubble ${msg.role}`}>
+                        {msg.role === 'assistant' ? (
+                          <EphiMarkdown text={msg.text} />
+                        ) : (
+                          <div className="user-followup-text">“{msg.text}”</div>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {isContinuing && (
+                      <div className="horary-chat-bubble assistant">
+                        <div className="spinner-small" style={{ marginBottom: '0.5rem' }} />
+                        <p style={{ fontStyle: 'italic', color: 'var(--text-muted)' }}>The Oracle is contemplating...</p>
+                      </div>
+                    )}
+                  </div>
 
-                <form onSubmit={handleFollowUp} className="horary-followup-form" style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
-                  <input
-                    type="text"
-                    value={followUpMsg}
-                    onChange={(e) => setFollowUpMsg(e.target.value)}
-                    placeholder="Ask a follow-up question..."
-                    autoComplete="off"
-                  />
-                  <button 
-                    type="submit" 
-                    className="btn btn-primary" 
-                    disabled={isContinuing || !followUpMsg.trim()}
-                  >
-                    {isContinuing ? '...' : 'Ask'}
-                  </button>
-                </form>
-              </div>
-            )}
-            
-            {!isGeminiConfigured() && (
-              <div className="synastry-error-box">
-                Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env to enable detailed AI judgments.
-              </div>
-            )}
-          </div>
+                  <form onSubmit={handleFollowUp} className="horary-followup-form" style={{ marginTop: '2rem', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
+                    <input
+                      type="text"
+                      value={followUpMsg}
+                      onChange={(e) => setFollowUpMsg(e.target.value)}
+                      placeholder="Ask a follow-up question..."
+                      autoComplete="off"
+                    />
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary" 
+                      disabled={isContinuing || !followUpMsg.trim()}
+                    >
+                      {isContinuing ? '...' : 'Ask'}
+                    </button>
+                  </form>
+                </div>
+              )}
+              
+              {!isGeminiConfigured() && (
+                <div className="synastry-error-box">
+                  Gemini API key not configured. Add VITE_GEMINI_API_KEY to your .env to enable detailed AI judgments.
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

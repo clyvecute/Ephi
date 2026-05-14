@@ -41,11 +41,14 @@ export default function NavBar() {
   const { currentUser, loginWithGoogle, logout } = useAuth();
   const [sigCount, setSigCount] = useState(0);
   const [hasNatal, setHasNatal] = useState(false);
+  const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
     function refresh() {
       setSigCount(getSignificantAspectCount());
       setHasNatal(hasNatalChart());
+      const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+      setPuristMode(settings.puristMode || false);
     }
     refresh();
     const t = setInterval(refresh, 60_000);
@@ -65,14 +68,16 @@ export default function NavBar() {
       label: 'Reading', 
       reqNatal: true, 
       active: location.pathname === '/reading',
-      icon: 'sparkle' // Will use a better one if available, but sparkle works for now
+      icon: 'sparkle',
+      isAi: true
     },
     { 
       path: '/synastry', 
       label: 'Synastry', 
       reqNatal: true, 
       active: location.pathname === '/synastry',
-      icon: 'sparkle'
+      icon: 'sparkle',
+      isAi: true
     },
     { 
       path: '/tools', 
@@ -81,7 +86,7 @@ export default function NavBar() {
       active: location.pathname === '/tools',
       icon: 'star'
     }
-  ];
+  ].filter(t => !puristMode || !t.isAi);
 
   return (
     <nav className="nav-bar">

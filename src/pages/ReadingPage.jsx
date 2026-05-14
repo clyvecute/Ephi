@@ -6,7 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { generateReading, isGeminiConfigured, FOCUS_AREAS } from '../lib/gemini';
+import { generateReading, isOracleConfigured as isGeminiConfigured, FOCUS_AREAS } from '../lib/oracle';
 import {
   saveReading,
   getRecentReadings,
@@ -17,7 +17,7 @@ import { getPlanetPositions } from '../lib/ephemeris';
 import { getActiveAspects } from '../lib/aspects';
 import EphiMarkdown from '../components/EphiMarkdown';
 import ChartWheel from '../components/ChartWheel';
-import { generateAspectReading } from '../lib/gemini';
+import { generateAspectReading } from '../lib/oracle';
 import AdSlot from '../components/AdSlot.jsx';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -249,15 +249,15 @@ export default function ReadingPage() {
   const [reading,     setReading]     = useState(null);
   const [errorMsg,    setErrorMsg]    = useState('');
   const [pastReadings,setPastReadings]= useState([]);
-  const [configured,  setConfigured]  = useState(true);
-  const [confirmModal,setConfirmModal]= useState(null);
-  const [userQuery,   setUserQuery]   = useState('');
-  const [fileUri,     setFileUri]     = useState('');
   const [deepDive,    setDeepDive]    = useState(null); // { planet, text, loading }
+  const [puristMode,  setPuristMode]  = useState(false);
   const abortRef = useRef(false);
 
   // Load data on mount
   useEffect(() => {
+    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    setPuristMode(settings.puristMode || false);
+
     setConfigured(isGeminiConfigured());
     const natalData = getNatalFromStorage();
     setNatal(natalData);
@@ -267,7 +267,11 @@ export default function ReadingPage() {
       setAspects(aspectData.aspects);
     }
 
-    setPastReadings(getRecentReadings());
+    const loadPast = async () => {
+      const past = await getRecentReadings();
+      setPastReadings(past);
+    };
+    loadPast();
   }, []);
 
   // Fetch fresh aspects if not cached
@@ -296,7 +300,7 @@ export default function ReadingPage() {
   async function handleGenerate() {
     if (!natal) return;
 
-    const existingFresh = getFreshReadingForFocus(focus);
+    const existingFresh = await getLatestReading(focus);
     if (existingFresh) {
       const focusLabel = FOCUS_AREAS.find(f => f.value === focus)?.label || focus;
       setConfirmModal({
@@ -327,9 +331,16 @@ export default function ReadingPage() {
       });
       if (abortRef.current) return;
 
-      saveReading(result);
-      setPastReadings(getRecentReadings());
-      setReading(result);
+      const saved = await saveReading({
+        focus,
+        text: result.text,
+        aspects,
+        aspectCount: aspects.length,
+      });
+
+      const past = await getRecentReadings();
+      setPastReadings(past);
+      setReading(saved);
       setStatus('done');
     } catch (err) {
       if (abortRef.current) return;

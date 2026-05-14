@@ -94,7 +94,12 @@ export default function Dashboard() {
     return params.get('tab') || 'sky';
   });
 
+  const [puristMode, setPuristMode] = useState(false);
+
   useEffect(() => {
+    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    setPuristMode(settings.puristMode || false);
+
     const params = new URLSearchParams(location.search);
     if (params.get('tab')) setTab(params.get('tab'));
   }, [location.search]);
@@ -315,7 +320,7 @@ export default function Dashboard() {
               aspects={skyAspects}
               title="Current Sky Aspects"
               emptyMsg="No notable aspects in the sky right now."
-              onSynthesize={handleSynthesize}
+              onSynthesize={puristMode ? null : handleSynthesize}
             />
           </div>
         </div>
@@ -356,7 +361,7 @@ export default function Dashboard() {
                 aspects={transitToNatal}
                 title={`Transits to ${natalChart.meta.name}'s Chart`}
                 emptyMsg="No transit aspects to your natal chart right now."
-                onSynthesize={handleSynthesize}
+                onSynthesize={puristMode ? null : handleSynthesize}
               />
             </div>
           </div>

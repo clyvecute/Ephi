@@ -69,9 +69,28 @@ This document outlines the roadmap for transitioning Ephi from a high-performanc
 - **Implementation**: Prepared `index.html` with a Google AdSense integration point.
 - **Impact**: Generates passive revenue without locking features behind a paywall.
 
-### 5.3 Local Payment Setup (Action Required)
-- **Task**: Finalize the "Phase" for Maya and GoTyme by uploading personal QR codes to `public/qrs/` and updating the account details in `SupportPage.jsx`.
 - **Impact**: Maximizes conversion for the significant Philippine user base.
+
+---
+
+## Phase 6: Architectural Excellence & Scalability (COMPLETED)
+*Goal: Move from "Startup" mode to "Platform" mode with robust, high-performance infrastructure.*
+
+### 6.1 AI Abstraction Layer (Completed)
+- **Task**: Refactor `gemini.js` into `oracle.js` with a "Model Switching" logic.
+- **Impact**: Redundancy and ability to swap AI providers (Gemini/Claude/GPT).
+
+### 6.2 IndexedDB Migration (Completed)
+- **Task**: Implement a local-first DB using Dexie.js for reading histories and heavy data.
+- **Impact**: Near-zero latency and massive reduction in cloud sync costs.
+
+### 6.3 WASM Swiss Ephemeris (Completed)
+- **Task**: Integrate `@swisseph/browser` WASM for professional-grade astronomical precision.
+- **Impact**: Precision to arc-seconds, satisfying professional astrologers.
+
+### 6.4 Tokenized "Divine Credit" Economy (Completed)
+- **Task**: Built a credit-based system and support tiers.
+- **Impact**: Sustainable revenue model via "Divine Credits".
 
 ---
 

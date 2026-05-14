@@ -18,7 +18,8 @@ export default function NatalForm({ initialData, onSave, onCancel, loading, erro
     lon: initialData?.lon || '', 
     utcOffset: initialData?.utcOffset || '',
     sidereal: initialData?.sidereal || false,
-    gender: initialData?.gender || 'male'
+    gender: initialData?.gender || 'male',
+    precision: initialData?.precision !== false // Default to true
   });
   const [cityQuery, setCityQuery] = useState('');
   const [cityResults, setCityResults] = useState([]);
@@ -86,7 +87,8 @@ export default function NatalForm({ initialData, onSave, onCancel, loading, erro
       lon: parseFloat(form.lon),
       utcOffset: parseFloat(form.utcOffset),
       sidereal: form.sidereal,
-      gender: form.gender
+      gender: form.gender,
+      precision: form.precision
     });
   }
 
@@ -246,6 +248,40 @@ export default function NatalForm({ initialData, onSave, onCancel, loading, erro
             >
               Female
             </button>
+          </div>
+        </div>
+        
+        <div className="form-group" style={{ marginTop: '0.5rem' }}>
+          <label className="form-label">Calculation Engine</label>
+          <div 
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem', 
+              background: 'var(--bg-deep)', 
+              padding: '0.75rem', 
+              borderRadius: 'var(--radius-md)', 
+              border: '1px solid var(--border)',
+              cursor: 'pointer'
+            }}
+            onClick={() => set('precision', !form.precision)}
+          >
+            <div style={{ 
+              width: '18px', 
+              height: '18px', 
+              border: '2px solid var(--accent)', 
+              borderRadius: '4px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: form.precision ? 'var(--accent)' : 'transparent'
+            }}>
+              {form.precision && <UiIcon name="sparkle" size={12} color="#fff" />}
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>High Precision (Swiss Ephemeris)</div>
+              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Uses professional-grade WASM for arc-second accuracy.</div>
+            </div>
           </div>
         </div>
 

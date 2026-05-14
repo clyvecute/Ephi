@@ -6,7 +6,7 @@ import { getPlanetPositions, PLANET_META, ALL_PLANETS, getZodiacInfo } from '../
 import { birthDataToDate, approximateAscendant, loadNatalChart } from '../lib/natal';
 import { getNakshatra, getNavamsaSign, getVimshottariDasha } from '../lib/vedic';
 import { DASHA_MEANINGS, NAKSHATRA_MEANINGS } from '../lib/vedicInterpretations';
-import { generateVedicReading, isGeminiConfigured } from '../lib/gemini';
+import { generateVedicReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 
 export default function VedicPage() {
@@ -21,8 +21,11 @@ export default function VedicPage() {
   const [aiReading, setAiReading] = useState('');
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState('');
+  const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
+    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    setPuristMode(settings.puristMode || false);
     calculateVedic();
   }, []);
 

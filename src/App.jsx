@@ -7,7 +7,6 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import { ToastProvider } from './components/Toast';
-import { clearExpired } from './lib/readingCache';
 import { scheduleAspectChecks, getPreferences } from './lib/notifications';
 import { AuthProvider } from './contexts/AuthContext';
 import Footer from './components/Footer';
@@ -81,9 +80,6 @@ export default function App() {
   useEffect(() => {
     // 1. Log page view
     logPageView(location.pathname);
-
-    // 2. Clear expired cache entries
-    clearExpired();
 
     // 2. Start notifications background loop if enabled
     const prefs = getPreferences();

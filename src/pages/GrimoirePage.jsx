@@ -3,19 +3,46 @@ import { getLibrary, saveToLibrary, removeFromLibrary, TOOL_LABELS } from '../li
 import { getCacheStats, clearAllReadings } from '../lib/readingCache';
 import { UiIcon } from '../components/EphiIcons';
 import { useToast } from '../components/Toast';
-import { isGeminiConfigured } from '../lib/gemini';
+import { isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function GrimoirePage() {
   const { currentUser, loginWithGoogle } = useAuth();
   const [lib, setLib] = useState(getLibrary());
-  const [stats, setStats] = useState(getCacheStats());
+  const [stats, setStats] = useState({ total: 0, expired: 0, fresh: 0 });
+
+  useEffect(() => {
+    const loadData = async () => {
+      const s = await getCacheStats();
+      setStats(s);
+    };
+    loadData();
+  }, []);
   const [manualUri, setManualUri] = useState('');
   const [selectedTool, setSelectedTool] = useState('global');
   const [importStatus, setImportStatus] = useState('');
   const [persona, setPersona] = useState(localStorage.getItem('ephi_persona') || 'stoic');
+  const [oracleProvider, setOracleProvider] = useState(localStorage.getItem('ephi_oracle_provider') || 'google');
+  const [puristMode, setPuristMode] = useState(() => {
+    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    return settings.puristMode || false;
+  });
   const toast = useToast();
+
+  const handleProviderChange = (val) => {
+    setOracleProvider(val);
+    localStorage.setItem('ephi_oracle_provider', val);
+    toast(`Oracle switched to ${val.toUpperCase()}`);
+  };
+
+  const handleTogglePurist = (val) => {
+    setPuristMode(val);
+    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    settings.puristMode = val;
+    localStorage.setItem('ephi_settings', JSON.stringify(settings));
+    toast(val ? 'Purist Mode Active: AI features disabled.' : 'AI features enabled.');
+  };
 
   if (!currentUser) {
     return (
@@ -36,10 +63,12 @@ export default function GrimoirePage() {
     );
   }
 
-  const handleClearCache = () => {
+  const handleClearCache = async () => {
     if (window.confirm('Wipe all local reading history? This cannot be undone.')) {
-      localStorage.clear();
-      window.location.reload();
+      await clearAllReadings();
+      toast('Reading history wiped.');
+      const s = await getCacheStats();
+      setStats(s);
     }
   };
 
@@ -289,6 +318,38 @@ export default function GrimoirePage() {
             </form>
           </div>
 
+          {/* Oracle Provider */}
+          <div className="ephi-card" style={{ padding: '2rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <UiIcon name="gear" size={20} color="var(--accent)" />
+              <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Oracle Engine</h2>
+            </div>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+              Select the intelligence engine powering your interpretations.
+            </p>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button
+                onClick={() => handleProviderChange('google')}
+                className={`btn ${oracleProvider === 'google' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ flex: 1, fontSize: '0.8rem' }}
+              >
+                Google Gemini
+              </button>
+              <button
+                onClick={() => handleProviderChange('groq')}
+                className={`btn ${oracleProvider === 'groq' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ flex: 1, fontSize: '0.8rem' }}
+              >
+                Groq (Llama 3)
+              </button>
+            </div>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+              * Ensure the respective API key is set in your <code>.env</code> file.
+            </p>
+          </div>
+
           {/* Oracle Persona */}
           <div className="ephi-card" style={{ padding: '2rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
@@ -323,6 +384,31 @@ export default function GrimoirePage() {
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Purist Mode / AI Opt-out */}
+          <div className="ephi-card" style={{ padding: '2rem', border: puristMode ? '1px solid var(--tense)' : '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <UiIcon name="gear" size={20} color={puristMode ? 'var(--tense)' : 'var(--accent)'} />
+              <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Purist Mode</h2>
+            </div>
+            
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+              If you prefer traditional data over AI synthesis, activate Purist Mode. This hides all AI "Generate" buttons and synthesis features globally.
+            </p>
+
+            <button
+              onClick={() => handleTogglePurist(!puristMode)}
+              className={`btn ${puristMode ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ 
+                width: '100%', 
+                background: puristMode ? 'var(--tense)' : 'transparent',
+                borderColor: puristMode ? 'var(--tense)' : 'var(--border)',
+                color: puristMode ? '#fff' : 'var(--text-primary)'
+              }}
+            >
+              {puristMode ? 'Deactivate Purist Mode' : 'Activate Purist Mode'}
+            </button>
           </div>
 
           {/* Storage Management */}

@@ -103,6 +103,53 @@ export function generateNatalChart(data, options = {}) {
   };
 }
 
+/**
+ * HIGH PRECISION VERSION (WASM-based)
+ */
+import { getPrecisionPositions, getPrecisionHouses } from './swe.js';
+
+export async function generatePrecisionNatalChart(data, options = {}) {
+  const errors = validateBirthData(data);
+  if (errors.length) throw new Error(errors.join(' '));
+
+  const birthDate = birthDataToDate(data);
+  
+  // 1. Get high-precision planet positions
+  const rawPositions = await getPrecisionPositions(birthDate, options);
+  
+  // 2. Get high-precision house cusps (Placidus by default)
+  const houses = await getPrecisionHouses(birthDate, data.lat, data.lon, options.houseSystem || 'P');
+
+  // 3. Format positions to match Ephi standard
+  const positions = {};
+  for (const [key, val] of Object.entries(rawPositions)) {
+    const name = key.charAt(0).toUpperCase() + key.slice(1);
+    positions[name] = {
+      ...val,
+      ...getZodiacInfo(val.longitude),
+      retrograde: val.isRetrograde
+    };
+  }
+
+  const ascFinal = { longitude: houses.ascendant, ...getZodiacInfo(houses.ascendant) };
+
+  return {
+    meta: {
+      ...data,
+      sidereal: !!options.sidereal,
+      precision: 'professional (swe)',
+      generated: new Date().toISOString(),
+    },
+    positions,
+    ascendant: ascFinal,
+    mc: { longitude: houses.mc, ...getZodiacInfo(houses.mc) },
+    cusps: houses.cusps.map(c => ({ longitude: c, ...getZodiacInfo(c) })),
+    sunSign: getZodiacInfo(rawPositions.sun.longitude).sign,
+    moonSign: getZodiacInfo(rawPositions.moon.longitude).sign,
+    risingSign: ascFinal.sign,
+  };
+}
+
 // ─── Ascendant (simplified) ───────────────────────────────────────────────────
 
 import { julianCenturies, dateToJD, gmst, toRad, toDeg, norm360, meanObliquity, zodiacSign as zs } from './astronomy.js';

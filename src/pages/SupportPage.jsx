@@ -51,13 +51,40 @@ export default function SupportPage() {
 
   return (
     <div className="page-wrap">
-      <div className="page-header">
-        <span className="page-label">Contribution</span>
-        <h1 className="page-title">Support Ephi</h1>
-        <p className="page-subtitle">
-          Ephi is built with love and remains free to use. If you find value in these tools, 
-          consider supporting the development.
-        </p>
+      </div>
+      
+      {/* Divine Credit Bundles */}
+      <div style={{ maxWidth: '900px', margin: '0 auto 3rem' }}>
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', textAlign: 'center', marginBottom: '2rem' }}>✦ Divine Credits ✦</h2>
+        <div className="responsive-grid-3">
+          {[
+            { id: 'tier_1', amount: 10,  price: '₱150', name: 'Neophyte', desc: '10 High-Precision Readings' },
+            { id: 'tier_2', amount: 50,  price: '₱500', name: 'Adept', desc: '50 Readings + Priority Support' },
+            { id: 'tier_3', amount: 200, price: '₱1500', name: 'Master', desc: 'Unlimited Depth Archive' }
+          ].map(bundle => (
+            <div key={bundle.id} className="ephi-card" style={{ 
+              padding: '2rem', 
+              textAlign: 'center', 
+              border: bundle.id === 'tier_2' ? '1px solid var(--accent)' : '1px solid var(--border)',
+              transform: bundle.id === 'tier_2' ? 'scale(1.05)' : 'none',
+              zIndex: bundle.id === 'tier_2' ? 2 : 1
+            }}>
+              <div style={{ color: 'var(--accent)', fontSize: '0.8rem', fontWeight: 800, textTransform: 'uppercase', marginBottom: '0.5rem' }}>{bundle.name}</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 800, margin: '0.5rem 0' }}>{bundle.amount}</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Divine Credits</div>
+              <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1rem' }}>{bundle.price}</div>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', height: '2.5rem' }}>{bundle.desc}</p>
+              <button className={`btn ${bundle.id === 'tier_2' ? 'btn-primary' : 'btn-ghost'}`} style={{ width: '100%' }}>
+                Acquire
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="page-header" style={{ marginBottom: '2rem' }}>
+        <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', margin: 0 }}>Alternative Support</h2>
+        <p className="page-subtitle">Direct contributions to keep the servers running.</p>
       </div>
 
       <div className="responsive-grid-2" style={{ maxWidth: '900px', margin: '0 auto' }}>

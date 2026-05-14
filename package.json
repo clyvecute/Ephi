@@ -14,7 +14,9 @@
   "dependencies": {
     "@astrodraw/astrochart": "^3.0.2",
     "@google/generative-ai": "^0.24.1",
+    "@swisseph/browser": "^1.1.1",
     "astronomy-engine": "^2.1.19",
+    "dexie": "^4.4.2",
     "dotenv": "^17.4.2",
     "firebase": "^12.13.0",
     "react": "^18.3.1",

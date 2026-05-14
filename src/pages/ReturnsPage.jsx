@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { findSolarReturn, findLunarReturn, getSecondaryProgressions } from '../lib/returns';
 import { TransitWheel } from '../components/AstroChartWheel';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
-import { generateReturnReading, isGeminiConfigured } from '../lib/gemini.js';
+import { generateReturnReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle.js';
 import EphiMarkdown from '../components/EphiMarkdown.jsx';
 
 export default function ReturnsPage() {
