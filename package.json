@@ -1,0 +1,28 @@
+{
+  "name": "ephi",
+  "version": "1.0.0",
+  "description": "Real-time astrology app — planetary transits & natal chart interpretations",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:ephemeris": "node lib/ephemeris.js",
+    "test:aspects": "node lib/aspects.js",
+    "test:natal": "node lib/natal.js"
+  },
+  "dependencies": {
+    "@astrodraw/astrochart": "^3.0.2",
+    "@google/generative-ai": "^0.24.1",
+    "astronomy-engine": "^2.1.19",
+    "dotenv": "^17.4.2",
+    "firebase": "^12.13.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.14.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "vite": "^5.4.0"
+  }
+}

@@ -1,0 +1,241 @@
+import { useState, useEffect, useRef } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { NatalWheel } from '../components/AstroChartWheel.jsx';
+import { UiIcon } from '../components/EphiIcons.jsx';
+
+// Dummy data for the "Live Sky" snapshot on homepage
+const DUMMY_SKY = {
+  sun: 40.5, moon: 120.2, mercury: 35.1, venus: 55.4, mars: 10.8,
+  jupiter: 300.5, saturn: 315.2, uranus: 50.1, neptune: 345.5, pluto: 295.1
+};
+
+function BentoCard({ title, desc, sizeClass, imgUrl, children }) {
+  return (
+    <div className={`bento-card ${sizeClass}`} style={{ padding: 0, gap: 0, display: 'flex', flexDirection: 'column', aspectRatio: '1 / 1', minHeight: '300px' }}>
+      {imgUrl && (
+        <div style={{ padding: '1.5rem', display: 'flex', justifyContent: 'center', background: '#050505', borderTopLeftRadius: 'var(--radius-lg)', borderTopRightRadius: 'var(--radius-lg)', flex: 1, alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
+          <img src={imgUrl} alt="Bento Graphic" style={{ width: '110px', opacity: 0.8 }} />
+        </div>
+      )}
+      <div style={{ padding: '1.5rem 2rem', display: 'flex', flexDirection: 'column', flex: 'none', height: '45%', justifyContent: 'center' }}>
+        <h3 className="bento-title" style={{ fontSize: '1.1rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }} dangerouslySetInnerHTML={{ __html: title }} />
+        <p className="bento-desc" style={{ fontSize: '0.9rem', lineHeight: '1.5', margin: 0 }}>{desc}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+export default function Landing() {
+  const location = useLocation();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [navSticky, setNavSticky] = useState(false);
+  const heroRef = useRef(null);
+
+  const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  // When the hero section scrolls out of view, we add .is-sticky to the nav
+  // to toggle the background opacity and reveal the brand/CTA.
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => setNavSticky(!entry.isIntersecting),
+      { threshold: 0, rootMargin: '-1px 0px 0px 0px' }
+    );
+    if (heroRef.current) observer.observe(heroRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const navLinks = [
+    { to: '/dashboard', label: 'Transits' },
+    { to: '/reading',   label: 'Reading'  },
+    { to: '/synastry',  label: 'Synastry' },
+    { to: '/horary',    label: 'Horary'   },
+    { to: '/alerts',    label: 'Alerts'   },
+    { to: '/tools',     label: 'Tools'    },
+  ];
+
+  return (
+    <div className="landing-container">
+
+      {/* ── SECTION 1: HERO ────────────────────────────────────── */}
+      <section className="hero-section" ref={heroRef}>
+        <p className="landing-small-sans">Modern astrology for the conscious soul</p>
+
+        <h1 className="landing-huge-serif">ephi</h1>
+
+        <p className="landing-paragraph">
+          Unlock the wisdom of the stars. By integrating ancient techniques with
+          modern insights, Ephi provides you with a clear, celestial roadmap
+          for your journey.
+        </p>
+
+        <div className="scroll-indicator">
+          <span className="scroll-text">SCROLL</span>
+          <div className="scroll-line" />
+        </div>
+      </section>
+
+      {/* ── NAV — native sticky below hero ── */}
+      <nav className={`landing-nav${navSticky ? ' is-sticky' : ''}`}>
+        <span className={`landing-nav-brand${navSticky ? ' visible' : ''}`}>
+          ephi
+        </span>
+        <div className="landing-nav-links">
+          {navLinks.map(({ to, label }) => (
+            <Link
+              key={to}
+              to={to}
+              className={`landing-nav-link${location.pathname === to ? ' active' : ''}`}
+            >
+              {label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Mobile Toggle Button */}
+        <button className="landing-mobile-toggle" onClick={toggleMenu} aria-label="Toggle Menu">
+          <UiIcon name="sparkle" size={24} />
+        </button>
+
+        <Link
+          to="/dashboard"
+          className={`landing-nav-cta${navSticky ? ' visible' : ''}`}
+        >
+          Enter App →
+        </Link>
+      </nav>
+
+      {/* ── SECTION 2: BENTO FEATURES ──────────────────────────── */}
+      <section className="landing-section">
+        <span className="section-label">Celestial Tools</span>
+        <div className="bento-grid">
+          <BentoCard
+            title="Natal Blueprint"
+            desc="High-fidelity birth chart analysis using VSOP87 precision and traditional house systems."
+            sizeClass="span-4"
+            imgUrl="/cyber-icons/natal.png"
+          >
+            <div style={{ marginTop: 'auto', paddingTop: '2rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}>
+              <UiIcon name="sparkle" size={16} /> Precision Astronomy
+            </div>
+          </BentoCard>
+
+          <BentoCard
+            title="Horary"
+            desc="Ask the heavens a specific question."
+            sizeClass="span-4"
+            imgUrl="/cyber-icons/horary.png"
+          />
+
+          <BentoCard
+            title="Celestial Connections"
+            desc="Deep-dive synastry and composite charts to understand your relational geometry."
+            sizeClass="span-4"
+            imgUrl="/cyber-icons/synastry.png"
+          />
+
+          <BentoCard
+            title="Vedic Jyotish"
+            desc="Authentic sidereal D-1/D-9 charts, Nakshatras, and Vimshottari Dasha timelines."
+            sizeClass="span-4"
+            imgUrl="/cyber-icons/vedic.png"
+          />
+
+          <BentoCard
+            title="Alerts"
+            desc="Real-time notifications for exact transits."
+            sizeClass="span-4"
+            imgUrl="/cyber-icons/alerts.png"
+          />
+
+          <BentoCard
+            title="Cycles"
+            desc="Solar and Lunar return monitoring."
+            sizeClass="span-4"
+            imgUrl="/cyber-icons/cycles.png"
+          />
+        </div>
+      </section>
+
+      {/* ── SECTION 3: LIVE SKY ────────────────────────────────── */}
+      <section className="sky-section">
+        <div className="sky-content">
+          <span className="section-label" style={{ color: '#c9a0dc' }}>Live Sky</span>
+          <h2 className="sky-title">The heavens, in real-time.</h2>
+          <p className="landing-paragraph" style={{ color: '#94a3b8', maxWidth: '400px' }}>
+            Ephi computes planetary positions every 60 seconds. Observe the current
+            geometry of the cosmos as it unfolds above you.
+          </p>
+          <Link
+            to="/dashboard"
+            className="btn btn-primary"
+            style={{ marginTop: '3rem', display: 'inline-block' }}
+          >
+            Enter Dashboard
+          </Link>
+        </div>
+        <div className="sky-wheel-wrap">
+          <NatalWheel natal={DUMMY_SKY} size={500} />
+        </div>
+      </section>
+
+      {/* ── SECTION 4: AI INSIGHTS ─────────────────────────────── */}
+      <section className="ai-section">
+        <div className="ai-grid">
+          <div className="chat-preview">
+            <div className="chat-bubble bubble-user">What does my Mars in the 8th house mean for my career?</div>
+            <div className="chat-bubble bubble-ai">
+              Your Mars in the 8th suggests a drive for deep, transformative work.
+              In the context of your Saturn return, this indicates a period of
+              restructuring how you handle shared resources and professional power...
+            </div>
+          </div>
+          <div className="ai-content">
+            <span className="section-label">The Oracle</span>
+            <h2 className="bento-title" style={{ fontSize: '4rem' }}>Ancient logic,<br/>Modern AI.</h2>
+            <p className="bento-desc" style={{ maxWidth: '450px', fontSize: '1.2rem' }}>
+              We've bridged the gap between traditional Hellenistic techniques and
+              cutting-edge LLMs to provide context-aware readings that feel human.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="landing-section" style={{ textAlign: 'center', padding: '60px' }}>
+        <p className="landing-small-sans" style={{ opacity: 0.5, marginBottom: '1rem' }}>© 2026 EPHI ASTROLOGY. ALL RIGHTS RESERVED.</p>
+        <Link 
+          to="/support" 
+          style={{ 
+            color: 'var(--accent)', 
+            textDecoration: 'none', 
+            fontSize: '0.8rem', 
+            fontWeight: '600',
+            letterSpacing: '0.1em',
+            textTransform: 'uppercase'
+          }}
+        >
+          Support the Project
+        </Link>
+      </footer>
+
+      {/* Fullscreen Overlay Menu */}
+      {isMenuOpen && (
+        <div className="landing-overlay">
+          <button className="landing-close-btn" onClick={toggleMenu} aria-label="Close Menu">✕</button>
+          <div className="landing-overlay-content">
+            <h2 className="landing-overlay-title">ephi</h2>
+            <nav className="landing-overlay-nav">
+              <Link to="/dashboard" className="landing-overlay-link" onClick={toggleMenu}>Transits</Link>
+              <Link to="/reading"   className="landing-overlay-link" onClick={toggleMenu}>AI Reading</Link>
+              <Link to="/alerts"    className="landing-overlay-link" onClick={toggleMenu}>Alerts</Link>
+              <Link to="/horary"    className="landing-overlay-link" onClick={toggleMenu}>Horary</Link>
+              <Link to="/synastry"  className="landing-overlay-link" onClick={toggleMenu}>Synastry</Link>
+              <Link to="/vedic"     className="landing-overlay-link" onClick={toggleMenu}>Jyotish</Link>
+            </nav>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
