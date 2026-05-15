@@ -41,6 +41,23 @@ function PageLoader() {
   );
 }
 
+/**
+ * Enforces login before accessing specific features.
+ */
+function ProtectedRoute({ children }) {
+  const { currentUser, loading } = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' 
+    ? { currentUser: { uid: 'dev' }, loading: false } 
+    : useAuth();
+  const location = useLocation();
+
+  if (loading) return <PageLoader />;
+  if (!currentUser) {
+    return <Navigate to="/" state={{ from: location }} replace />;
+  }
+
+  return children;
+}
+
 class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
@@ -107,40 +124,40 @@ export default function App() {
               <Route path="/" element={<Landing />} />
 
               {/* Transit dashboard */}
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
               {/* AI reading page */}
-              <Route path="/reading" element={<ReadingPage />} />
+              <Route path="/reading" element={<ProtectedRoute><ReadingPage /></ProtectedRoute>} />
 
               {/* Alerts page */}
-              <Route path="/alerts" element={<AlertsPage />} />
+              <Route path="/alerts" element={<ProtectedRoute><AlertsPage /></ProtectedRoute>} />
 
               {/* Synastry page */}
-              <Route path="/synastry" element={<SynastryPage />} />
+              <Route path="/synastry" element={<ProtectedRoute><SynastryPage /></ProtectedRoute>} />
 
               {/* Horary page */}
-              <Route path="/horary" element={<HoraryPage />} />
+              <Route path="/horary" element={<ProtectedRoute><HoraryPage /></ProtectedRoute>} />
 
               {/* Returns page */}
-              <Route path="/returns" element={<ReturnsPage />} />
+              <Route path="/returns" element={<ProtectedRoute><ReturnsPage /></ProtectedRoute>} />
 
               {/* Tools page */}
-              <Route path="/tools" element={<ToolsPage />} />
+              <Route path="/tools" element={<ProtectedRoute><ToolsPage /></ProtectedRoute>} />
 
               {/* Bazi page */}
-              <Route path="/bazi" element={<BaziPage />} />
+              <Route path="/bazi" element={<ProtectedRoute><BaziPage /></ProtectedRoute>} />
 
               {/* Hellenistic page */}
-              <Route path="/hellenistic" element={<HellenisticPage />} />
+              <Route path="/hellenistic" element={<ProtectedRoute><HellenisticPage /></ProtectedRoute>} />
 
               {/* Vedic page */}
-              <Route path="/vedic" element={<VedicPage />} />
+              <Route path="/vedic" element={<ProtectedRoute><VedicPage /></ProtectedRoute>} />
 
                {/* Grimoire (Restricted Library Management) */}
-              <Route path="/sys-archive" element={<GrimoirePage />} />
+              <Route path="/sys-archive" element={<ProtectedRoute><GrimoirePage /></ProtectedRoute>} />
               
               {/* Electional Module */}
-              <Route path="/chronos" element={<ElectionalPage />} />
+              <Route path="/chronos" element={<ProtectedRoute><ElectionalPage /></ProtectedRoute>} />
 
               {/* FAQ page */}
               <Route path="/faq" element={<FaqPage />} />

@@ -599,6 +599,14 @@ html, body {
   transform: translateX(8px);
   pointer-events: none;
   transition: opacity 0.4s ease, transform 0.4s ease;
+  
+  /* Reset button styles for auth toggle */
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  outline: none;
 }
 
 .landing-nav-cta.visible {
@@ -639,6 +647,34 @@ html, body {
 @keyframes scrollPulse {
   0%, 100% { opacity: 0.3; transform: scaleY(1); }
   50% { opacity: 1; transform: scaleY(1.2); }
+}
+
+/* ── Sky Section (Desktop) ────────────────────────────────────────────────── */
+.sky-section {
+  padding: 8rem 4vw;
+  display: flex;
+  align-items: center;
+  gap: 4rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.sky-content {
+  flex: 1;
+}
+
+.sky-title {
+  font-family: var(--font-serif);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  color: #fff;
+  margin-bottom: 1.5rem;
+  line-height: 1.1;
+}
+
+.sky-wheel-wrap {
+  flex: 1;
+  display: flex;
+  justify-content: center;
 }
 
 .landing-section {

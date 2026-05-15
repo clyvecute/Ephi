@@ -27,7 +27,12 @@ export function getLibrary() {
 
 export function saveToLibrary(toolKey, fileData) {
   const lib = getLibrary();
-  lib[toolKey] = fileData;
+  if (!lib[toolKey]) {
+    lib[toolKey] = [];
+  } else if (!Array.isArray(lib[toolKey])) {
+    lib[toolKey] = [lib[toolKey]];
+  }
+  lib[toolKey].push(fileData);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
 
   if (auth.currentUser) {
@@ -36,9 +41,19 @@ export function saveToLibrary(toolKey, fileData) {
   }
 }
 
-export function removeFromLibrary(toolKey) {
+export function removeFromLibrary(toolKey, index = null) {
   const lib = getLibrary();
-  delete lib[toolKey];
+  if (!lib[toolKey]) return;
+
+  if (index !== null && Array.isArray(lib[toolKey])) {
+    lib[toolKey].splice(index, 1);
+    if (lib[toolKey].length === 0) {
+      delete lib[toolKey];
+    }
+  } else {
+    delete lib[toolKey];
+  }
+
   localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
 
   if (auth.currentUser) {
@@ -49,7 +64,11 @@ export function removeFromLibrary(toolKey) {
 
 export function getBookForTool(toolKey) {
   const lib = getLibrary();
-  return lib[toolKey] || lib['global'] || null;
+  let items = lib[toolKey] || lib['global'] || [];
+  if (!Array.isArray(items) && items) {
+    items = [items];
+  }
+  return items;
 }
 
 export const TOOL_LABELS = {

@@ -13,10 +13,22 @@ const CORS_HEADERS = {
   'Content-Type': 'application/json',
 };
 
-async function callGemini(model, { prompt, fileUri }) {
+async function callGemini(model, { prompt, fileUri, fileUris }) {
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
   const parts = [{ text: prompt }];
-  if (fileUri) {
+  
+  if (fileUris && Array.isArray(fileUris)) {
+    for (const uri of fileUris) {
+      if (uri) {
+        parts.push({
+          fileData: {
+            fileUri: uri,
+            mimeType: uri.endsWith('.pdf') ? 'application/pdf' : 'text/plain',
+          },
+        });
+      }
+    }
+  } else if (fileUri) {
     parts.push({
       fileData: {
         fileUri,
@@ -83,17 +95,17 @@ export default async function handler(req, res) {
   // Note: Auth is optional during dev. Once launched publicly, enforce it strictly.
 
   // ── Payload ─────────────────────────────────────────────────────────────────
-  const { prompt, fileUri } = req.body;
+  const { prompt, fileUri, fileUris } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
   if (!GEMINI_KEY) return res.status(500).json({ error: 'Server config error: API key missing' });
 
   // ── Proxy to Gemini ─────────────────────────────────────────────────────────
   try {
-    let { response, status } = await callGemini(PRIMARY_MODEL, { prompt, fileUri });
+    let { response, status } = await callGemini(PRIMARY_MODEL, { prompt, fileUri, fileUris });
 
     // Automatic fallback if primary model not available
     if (status === 404) {
-      ({ response, status } = await callGemini(FALLBACK_MODEL, { prompt, fileUri }));
+      ({ response, status } = await callGemini(FALLBACK_MODEL, { prompt, fileUri, fileUris }));
     }
 
     if (!response.ok) {

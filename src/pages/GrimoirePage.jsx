@@ -198,12 +198,14 @@ export default function GrimoirePage() {
         <p className="page-subtitle" style={{ opacity: 0.7, maxWidth: '600px', margin: '0 auto' }}>
           Manage your private reference materials. Uploaded documents serve as the authoritative logic for AI interpretations.
         </p>
-        <div style={{ marginTop: '2rem' }}>
-          <a href="/admin" className="btn btn-ghost" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            <UiIcon name="gear" size={14} style={{ marginRight: 8 }} />
-            Open Admin Dashboard
-          </a>
-        </div>
+        {currentUser?.uid === import.meta.env.VITE_ADMIN_UID && (
+          <div style={{ marginTop: '2rem' }}>
+            <a href="/admin" className="btn btn-ghost" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <UiIcon name="gear" size={14} style={{ marginRight: 8 }} />
+              Open Admin Dashboard
+            </a>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
@@ -229,28 +231,49 @@ export default function GrimoirePage() {
                     <span style={{ fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
                       {label}
                     </span>
-                    {lib[key] && (
+                    {lib[key] && Array.isArray(lib[key]) && lib[key].length > 0 && (
                       <button 
                         onClick={() => { removeFromLibrary(key); setLib(getLibrary()); }}
                         style={{ background: 'none', border: 'none', color: 'var(--tense)', fontSize: '0.7rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
                       >
-                        Unbind
+                        Unbind All
                       </button>
                     )}
                   </div>
 
-                  {lib[key] ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ padding: '8px', background: 'var(--bg-deep)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                        <UiIcon name="sparkle" size={14} color="var(--accent)" />
-                      </div>
-                      <div style={{ flex: 1, overflow: 'hidden' }}>
-                        <div style={{ fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {lib[key].name}
+                  {lib[key] && Array.isArray(lib[key]) && lib[key].length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                      {lib[key].map((item, idx) => (
+                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ padding: '8px', background: 'var(--bg-deep)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                            <UiIcon name="sparkle" size={14} color="var(--accent)" />
+                          </div>
+                          <div style={{ flex: 1, overflow: 'hidden' }}>
+                            <div style={{ fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.name}
+                            </div>
+                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                              {item.uri}
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => { removeFromLibrary(key, idx); setLib(getLibrary()); }}
+                            style={{ background: 'none', border: 'none', color: 'var(--tense)', fontSize: '0.7rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                          >
+                            Unbind
+                          </button>
                         </div>
-                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {lib[key].uri}
-                        </div>
+                      ))}
+                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                        <label className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '8px 16px', cursor: 'pointer' }}>
+                          Add Another File
+                          <input 
+                            type="file" 
+                            accept=".pdf" 
+                            onChange={(e) => handleFileChange(key, e)}
+                            style={{ display: 'none' }} 
+                          />
+                        </label>
                       </div>
                     </div>
                   ) : (

@@ -26,7 +26,7 @@ export async function generateReading(params) {
 
   switch (provider) {
     case 'google':
-      return await GeminiProvider.generateReading(params);
+      return await GeminiProvider.generateReading(pa1rams);
     
     case 'groq':
       return await GroqProvider.generateReading(params);

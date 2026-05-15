@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 import { UiIcon } from './EphiIcons';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function Footer() {
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser && currentUser.uid === import.meta.env.VITE_ADMIN_UID;
+
   return (
     <footer style={styles.footer}>
       <div style={styles.container}>
@@ -17,7 +21,7 @@ export default function Footer() {
 
         <div style={styles.links}>
           <Link to="/about" style={styles.link}>About Ephi</Link>
-          <Link to="/admin" style={styles.link}>Admin Panel</Link>
+          {isAdmin && <Link to="/admin" style={styles.link}>Admin Panel</Link>}
           <Link to="/support" style={styles.link}>Support Project</Link>
           <a href="#" onClick={(e) => { e.preventDefault(); window.dispatchEvent(new CustomEvent('open-feedback')); }} style={styles.link}>Feedback</a>
         </div>

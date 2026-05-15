@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { NatalWheel } from '../components/AstroChartWheel.jsx';
 import { UiIcon } from '../components/EphiIcons.jsx';
+import { useAuth } from '../contexts/AuthContext';
 
 // Dummy data for the "Live Sky" snapshot on homepage
 const DUMMY_SKY = {
@@ -28,11 +29,22 @@ function BentoCard({ title, desc, sizeClass, imgUrl, children }) {
 
 export default function Landing() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { currentUser, loginWithGoogle } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [navSticky, setNavSticky] = useState(false);
   const heroRef = useRef(null);
 
   const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
+
+  const handleEnterApp = (e) => {
+    if (!currentUser) {
+      e.preventDefault();
+      loginWithGoogle();
+    } else {
+      navigate('/dashboard');
+    }
+  };
 
   // When the hero section scrolls out of view, we add .is-sticky to the nav
   // to toggle the background opacity and reveal the brand/CTA.
@@ -97,12 +109,13 @@ export default function Landing() {
           <UiIcon name="sparkle" size={24} />
         </button>
 
-        <Link
-          to="/dashboard"
+        <button
+          onClick={handleEnterApp}
           className={`landing-nav-cta${navSticky ? ' visible' : ''}`}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}
         >
-          Enter App →
-        </Link>
+          {currentUser ? 'Enter App →' : 'Login / Sign Up'}
+        </button>
       </nav>
 
       {/* ── SECTION 2: BENTO FEATURES ──────────────────────────── */}
@@ -166,13 +179,13 @@ export default function Landing() {
             Ephi computes planetary positions every 60 seconds. Observe the current
             geometry of the cosmos as it unfolds above you.
           </p>
-          <Link
-            to="/dashboard"
+          <button
+            onClick={handleEnterApp}
             className="btn btn-primary"
             style={{ marginTop: '3rem', display: 'inline-block' }}
           >
-            Enter Dashboard
-          </Link>
+            {currentUser ? 'Enter Dashboard' : 'Login to View Sky'}
+          </button>
         </div>
         <div className="sky-wheel-wrap">
           <NatalWheel natal={DUMMY_SKY} size={500} />
@@ -226,12 +239,12 @@ export default function Landing() {
           <div className="landing-overlay-content">
             <h2 className="landing-overlay-title">ephi</h2>
             <nav className="landing-overlay-nav">
-              <Link to="/dashboard" className="landing-overlay-link" onClick={toggleMenu}>Transits</Link>
-              <Link to="/reading"   className="landing-overlay-link" onClick={toggleMenu}>AI Reading</Link>
-              <Link to="/alerts"    className="landing-overlay-link" onClick={toggleMenu}>Alerts</Link>
-              <Link to="/horary"    className="landing-overlay-link" onClick={toggleMenu}>Horary</Link>
-              <Link to="/synastry"  className="landing-overlay-link" onClick={toggleMenu}>Synastry</Link>
-              <Link to="/vedic"     className="landing-overlay-link" onClick={toggleMenu}>Jyotish</Link>
+              <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>{currentUser ? 'Transits' : 'Login to Start'}</button>
+              <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>AI Reading</button>
+              <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>Alerts</button>
+              <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>Horary</button>
+              <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>Synastry</button>
+              <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>Jyotish</button>
             </nav>
           </div>
         </div>

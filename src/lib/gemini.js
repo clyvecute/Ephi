@@ -342,7 +342,7 @@ Tone: psychological depth + practical grounding + spiritual awareness. Speak dir
  * @param {number} maxTokens
  * @returns {Promise<string>} the generated text
  */
-async function callGemini(prompt, maxTokens = DEFAULT_MAX_TOKENS, fileUri = null) {
+async function callGemini(prompt, maxTokens = DEFAULT_MAX_TOKENS, fileUri = null, fileUris = null) {
   // ── Proxy mode (production): route through Vercel /api/oracle ──
   if (USE_PROXY) {
     let headers = { 'Content-Type': 'application/json' };
@@ -360,7 +360,7 @@ async function callGemini(prompt, maxTokens = DEFAULT_MAX_TOKENS, fileUri = null
       const res = await fetch(PROXY_URL, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ prompt, fileUri }),
+        body: JSON.stringify({ prompt, fileUri, fileUris }),
       });
 
       if (!res.ok) {
@@ -392,13 +392,13 @@ async function callGemini(prompt, maxTokens = DEFAULT_MAX_TOKENS, fileUri = null
     }
   }
 
-  return await callDirect(prompt, maxTokens, fileUri);
+  return await callDirect(prompt, maxTokens, fileUri, fileUris);
 }
 
 /**
  * Direct call logic (extracted for reuse in fallback)
  */
-async function callDirect(prompt, maxTokens, fileUri) {
+async function callDirect(prompt, maxTokens, fileUri, fileUris) {
   if (!API_KEY) {
     throw new Error('Gemini API key not found. Add VITE_GEMINI_API_KEY to your .env file.');
   }
@@ -406,7 +406,18 @@ async function callDirect(prompt, maxTokens, fileUri) {
   const runCall = async (modelName) => {
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
     const parts = [{ text: prompt }];
-    if (fileUri) {
+    if (fileUris && Array.isArray(fileUris)) {
+      for (const uri of fileUris) {
+        if (uri && uri !== 'pending_upload') {
+          parts.push({
+            fileData: {
+              fileUri: uri,
+              mimeType: uri.endsWith('.pdf') ? 'application/pdf' : 'text/plain',
+            },
+          });
+        }
+      }
+    } else if (fileUri) {
       parts.push({
         fileData: {
           fileUri,
@@ -470,20 +481,20 @@ export async function generateReading({ natal, aspects, focus = 'general', userN
   const aspectsText = formatAspects(aspects);
   
   // Check library for a tool-specific book if no manual fileUri is passed
-  let activeFileUri = fileUri;
-  const libraryBook = getBookForTool(mode === 'natal' ? 'natal' : 'transit');
-  if (!activeFileUri && libraryBook?.uri !== 'pending_upload') {
-    activeFileUri = libraryBook?.uri;
+  let activeFileUris = fileUri ? [fileUri] : [];
+  const libraryBooks = getBookForTool(mode === 'natal' ? 'natal' : 'transit');
+  if (activeFileUris.length === 0) {
+    activeFileUris = libraryBooks.map(b => b.uri).filter(u => u !== 'pending_upload');
   }
 
   // If we are passing a book, add a note to the prompt to use it
   let prompt = buildSynthesisPrompt({ natal, natalText, aspectsText, focus, userName, userQuery, mode });
-  if (activeFileUri) {
-    const bookLabel = libraryBook?.name || 'reference material';
-    prompt += `\n\nCRITICAL INSTRUCTION: I have attached a reference book (${bookLabel}) to this request. You MUST base your interpretations, techniques, and synthesis on the principles outlined in this specific document.`;
+  if (activeFileUris.length > 0) {
+    const bookLabels = libraryBooks.map(b => b.name).join(', ') || 'reference material';
+    prompt += `\n\nCRITICAL INSTRUCTION: I have attached reference books (${bookLabels}) to this request. You MUST base your interpretations, techniques, and synthesis on the principles outlined in these specific documents.`;
   }
 
-  const text = await callGemini(prompt, 1400, activeFileUri);
+  const text = await callGemini(prompt, 1400, null, activeFileUris);
 
   return {
     text,
@@ -631,10 +642,11 @@ Avoid clichés and generic horoscopes. The reading should feel bespoke, sophisti
  * @returns {Promise<{ text: string, timestamp: string }>}
  */
 export async function generateVedicReading({ name, mahadasha, antardasha, ascNakshatra, moonNakshatra }) {
-  const libraryBook = getBookForTool('vedic');
+  const libraryBooks = getBookForTool('vedic');
+  const validUris = libraryBooks.map(b => b.uri).filter(u => u !== 'pending_upload');
   let prompt = `You are a world-class expert Vedic Astrologer (Jyotishi) steeped in ancient Indian astrological tradition (Parashara). You provide deep, philosophical, and highly actionable insights based on the sidereal zodiac and lunar mansions.
   
-${libraryBook ? `CRITICAL: Base your analysis on the principles in the attached document (${libraryBook.name}).` : ''}
+${libraryBooks.length > 0 ? `CRITICAL: Base your analysis on the principles in the attached documents (${libraryBooks.map(b=>b.name).join(', ')}).` : ''}
 
 PROFILE:
 Name: ${name || 'The native'}
@@ -651,7 +663,7 @@ Structure your response with the exact following markdown headers:
 
 Use formatting like **bold** text and bullet points appropriately. Address the user directly as "you" in an editorial, empowering, yet deeply mystical tone.`;
 
-  const text = await callGemini(prompt, 1000, libraryBook?.uri !== 'pending_upload' ? libraryBook?.uri : null);
+  const text = await callGemini(prompt, 1000, null, validUris);
 
   return {
     text,
@@ -737,11 +749,12 @@ STRICTURES & RADICALITY:
   };
 
   const dataText = formatHorary(chart);
-  const libraryBook = getBookForTool('horary');
+  const libraryBooks = getBookForTool('horary');
+  const validUris = libraryBooks.map(b => b.uri).filter(u => u !== 'pending_upload');
 
   const prompt = `You are "Antigravity," a master traditional Horary Astrologer. You follow the strict, technical rules of William Lilly's "Christian Astrology" but provide your judgment with modern psychological depth and editorial sophistication.
   
-${libraryBook ? `CRITICAL: Base your analysis on the specific techniques in the attached document (${libraryBook.name}).` : ''}
+${libraryBooks.length > 0 ? `CRITICAL: Base your analysis on the specific techniques in the attached documents (${libraryBooks.map(b=>b.name).join(', ')}).` : ''}
 
 YOUR TASK: Provide an "Above Professional" level synthesis and final judgment for the user's question.
 
@@ -765,7 +778,7 @@ Structure your response using these headers:
 
 Tone: Sophisticated, technical yet accessible, deeply insightful, and objective.`;
 
-  const text = await callGemini(prompt, 1500, libraryBook?.uri !== 'pending_upload' ? libraryBook?.uri : null);
+  const text = await callGemini(prompt, 1500, null, validUris);
 
   return {
     text,
@@ -785,7 +798,8 @@ export async function continueHoraryReading({ chart, history, userMessage }) {
   };
 
   const chartContext = formatHorary(chart);
-  const libraryBook = getBookForTool('horary');
+  const libraryBooks = getBookForTool('horary');
+  const validUris = libraryBooks.map(b => b.uri).filter(u => u !== 'pending_upload');
 
   const historyContext = history.map(h => `${h.role === 'user' ? 'User' : 'Oracle'}: ${h.text}`).join('\n\n');
 
@@ -804,7 +818,7 @@ YOUR TASK: Answer the follow-up question deeply and technically, but keep it wit
 
 Tone: Maintain your sophisticated, technical, yet editorial and objective tone.`;
 
-  const text = await callGemini(prompt, 800, libraryBook?.uri !== 'pending_upload' ? libraryBook?.uri : null);
+  const text = await callGemini(prompt, 800, null, validUris);
 
   return {
     text,
