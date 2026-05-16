@@ -45,6 +45,11 @@ export function AuthProvider({ children }) {
       }
       return result?.user;
     } catch (error) {
+      if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
+        // User just closed the popup, silently ignore.
+        console.log("Login popup closed by user.");
+        return null;
+      }
       console.error("Auth Error:", error);
       alert(`Login failed: ${error.message} (${error.code})`);
       throw error;

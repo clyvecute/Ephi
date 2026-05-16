@@ -11,6 +11,7 @@ import * as GroqProvider from './providers/groq';
 
 // Configuration: Which provider is active?
 const getActiveProvider = () => localStorage.getItem('ephi_oracle_provider') || import.meta.env.VITE_ORACLE_PROVIDER || 'google';
+const PRIMARY_PROVIDER = getActiveProvider();
 
 /**
  * Main entry point for generating astrological readings.
@@ -26,7 +27,7 @@ export async function generateReading(params) {
 
   switch (provider) {
     case 'google':
-      return await GeminiProvider.generateReading(pa1rams);
+      return await GeminiProvider.generateReading(params);
     
     case 'groq':
       return await GroqProvider.generateReading(params);
@@ -107,6 +108,8 @@ export function isOracleConfigured() {
   switch (PRIMARY_PROVIDER) {
     case 'google':
       return GeminiProvider.isGeminiConfigured();
+    case 'groq':
+      return GroqProvider.isGroqConfigured();
     default:
       return false;
   }

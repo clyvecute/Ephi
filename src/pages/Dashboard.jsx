@@ -11,7 +11,7 @@ import { getZodiacInfo } from '../lib/ephemeris.js';
 import { calculateProfections } from '../lib/hellenistic.js';
 import { PlanetIcon, ZodiacIcon, UiIcon } from '../components/EphiIcons.jsx';
 import HouseTransits from '../components/HouseTransits.jsx';
-import EphiTimePicker from '../components/EphiTimePicker.jsx';
+
 import EphiMarkdown from '../components/EphiMarkdown.jsx';
 import { useToast } from '../components/Toast';
 import AdSlot from '../components/AdSlot.jsx';
@@ -131,12 +131,6 @@ export default function Dashboard() {
     toast('Returned to live sky.');
   };
 
-  const handleScrubChange = (days) => {
-    const base = scrubDate ? new Date(scrubDate) : new Date();
-    base.setDate(base.getDate() + days);
-    setScrubDate(base.toISOString());
-  };
-
   const handleSaveNatal = async (data) => {
     await saveChart(data);
     setIsEditing(false);
@@ -188,102 +182,60 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Transit Scrubber ────────────────────────────────────────── */}
-      <div className="card" style={{ 
-        margin: '1rem 0 2rem', 
-        padding: '1.5rem', 
-        borderLeft: scrubDate ? '4px solid var(--accent)' : '1px solid var(--border)',
-        transition: 'all 0.3s ease',
-        background: scrubDate ? 'var(--bg-deep)' : 'var(--bg-card)'
+      {/* ── Transit Time Picker ────────────────────────────────────── */}
+      <div className="card" style={{
+        margin: '1rem 0 2rem',
+        padding: '1rem 1.5rem',
+        borderLeft: scrubDate ? '3px solid var(--accent)' : '1px solid var(--border)',
+        transition: 'border-color 0.3s ease',
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <div style={{ 
-              width: '40px', height: '40px', borderRadius: '50%', 
-              background: 'var(--accent-subtle)', display: 'flex', 
-              alignItems: 'center', justifyContent: 'center' 
-            }}>
-              <UiIcon name="sparkle" size={20} color="var(--accent)" />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--accent)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Temporal</span>
-              <span style={{ fontSize: '0.9rem', fontWeight: 700, fontFamily: 'var(--font-serif)' }}>Scrubber</span>
-            </div>
-          </div>
-          
-          <div style={{ flex: 1, display: 'flex', gap: '1rem', alignItems: 'center', background: 'var(--bg-card)', padding: '0.5rem 1rem', borderRadius: '30px', border: '1px solid var(--border)' }}>
-            <button className="btn btn-ghost" style={{ padding: '8px', minWidth: '40px' }} onClick={() => handleScrubChange(-1)}>
-              <UiIcon name="arrow-left" size={14} />
-            </button>
-            <input 
-              type="range" 
-              min="-30" 
-              max="30" 
-              step="1"
-              value="0" 
-              onChange={(e) => {
-                const days = parseInt(e.target.value);
-                if (days === 0) return;
-                handleScrubChange(days);
-                e.target.value = "0"; 
-              }}
-              style={{ flex: 1, accentColor: 'var(--accent)', cursor: 'ew-resize' }} 
-            />
-            <button className="btn btn-ghost" style={{ padding: '8px', minWidth: '40px' }} onClick={() => handleScrubChange(1)}>
-              <UiIcon name="arrow-right" size={14} />
-            </button>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+            View Transit For
+          </span>
 
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            {/* Date Input */}
-            <input 
-              type="date" 
-              value={scrubDate ? new Date(scrubDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0]}
-              onChange={(e) => {
-                const [y, m, d] = e.target.value.split('-').map(Number);
-                const base = scrubDate ? new Date(scrubDate) : new Date();
-                base.setFullYear(y, m - 1, d);
-                setScrubDate(base.toISOString());
-              }}
-              style={{
-                background: 'var(--bg-deep)',
-                border: '1px solid var(--border)',
-                borderRadius: '8px',
-                padding: '10px',
-                color: 'var(--text-primary)',
-                fontFamily: 'var(--font-sans)',
-                fontSize: '0.85rem',
-                outline: 'none'
-              }}
-            />
+          {/* datetime-local covers both date and time in one native input */}
+          <input
+            type="datetime-local"
+            value={scrubDate
+              ? new Date(new Date(scrubDate).getTime() - new Date(scrubDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+              : ''}
+            onChange={(e) => {
+              if (e.target.value) setScrubDate(new Date(e.target.value).toISOString());
+            }}
+            style={{
+              flex: 1,
+              minWidth: '200px',
+              background: 'var(--bg-deep)',
+              border: '1px solid var(--border)',
+              borderRadius: '8px',
+              padding: '8px 12px',
+              color: 'var(--text-primary)',
+              fontFamily: 'var(--font-sans)',
+              fontSize: '0.85rem',
+              outline: 'none',
+              colorScheme: 'dark'
+            }}
+          />
 
-            {/* Time Picker */}
-            <div style={{ width: '140px' }}>
-              <EphiTimePicker 
-                value={scrubDate ? new Date(scrubDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                onChange={(timeStr) => {
-                  const base = scrubDate ? new Date(scrubDate) : new Date();
-                  const [h, m] = timeStr.split(':').map(Number);
-                  base.setHours(h, m, 0, 0);
-                  setScrubDate(base.toISOString());
-                }}
-              />
-            </div>
-          </div>
+          <button
+            className="btn btn-ghost"
+            onClick={handleResetTime}
+            style={{
+              fontSize: '0.78rem',
+              padding: '8px 14px',
+              color: scrubDate ? 'var(--accent)' : 'var(--text-muted)',
+              borderColor: scrubDate ? 'var(--accent)' : 'var(--border)',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {scrubDate ? '✦ Live' : 'Live Sky'}
+          </button>
         </div>
-        
+
         {scrubDate && (
-          <div style={{ 
-            marginTop: '1rem', padding: '0.75rem 1rem', 
-            background: 'rgba(201,160,220,0.05)', borderRadius: '8px',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}>
-            <span style={{ fontSize: '0.8rem', color: 'var(--accent-dark)', fontWeight: 600 }}>
-              Viewing Snapshot: {new Date(scrubDate).toLocaleDateString(undefined, { dateStyle: 'full' })}
-            </span>
-            <button className="btn btn-ghost" style={{ fontSize: '0.7rem', color: 'var(--tense)' }} onClick={handleResetTime}>
-              Snap to Live Sky
-            </button>
+          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: 'var(--accent-dark)' }}>
+            Snapshot: {new Date(scrubDate).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}
           </div>
         )}
       </div>

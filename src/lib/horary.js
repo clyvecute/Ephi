@@ -10,6 +10,7 @@
 //   const judgment = judgeChart(chart);
 
 import { getPlanetPositions, getZodiacInfo } from './ephemeris.js';
+import { getPrecisionHouses } from './swe.js';
 
 // ─── Traditional rulerships (Lilly) ──────────────────────────────────────────
 // No outer planets as house rulers — Uranus/Neptune/Pluto not used in horary
@@ -78,119 +79,7 @@ const HOUSE_TOPICS = {
   12: ['hidden enemies', 'isolation', 'self-undoing', 'secrets', 'karma', 'spirituality'],
 };
 
-// ─── Julian Day & Sidereal Time ───────────────────────────────────────────────
-
-function julianDay(date) {
-  const y = date.getUTCFullYear();
-  const m = date.getUTCMonth() + 1;
-  const d = date.getUTCDate()
-    + date.getUTCHours()   / 24
-    + date.getUTCMinutes() / 1440
-    + date.getUTCSeconds() / 86400;
-  const A = Math.floor(y / 100);
-  const B = 2 - A + Math.floor(A / 4);
-  return Math.floor(365.25 * (y + 4716))
-       + Math.floor(30.6001 * (m + 1))
-       + d + B - 1524.5;
-}
-
-/**
- * Greenwich Mean Sidereal Time in degrees.
- * Meeus Ch. 12, accurate to ~0.1s.
- */
-function greenwichSiderealTime(JD) {
-  const T  = (JD - 2451545.0) / 36525;
-  const T2 = T * T;
-  const T3 = T2 * T;
-  // GMST in seconds
-  let gmst = 280.46061837
-           + 360.98564736629 * (JD - 2451545)
-           + 0.000387933 * T2
-           - T3 / 38710000;
-  return ((gmst % 360) + 360) % 360;
-}
-
-/**
- * Local Sidereal Time in degrees.
- */
-function localSiderealTime(JD, lngDeg) {
-  const gmst = greenwichSiderealTime(JD);
-  return ((gmst + lngDeg) % 360 + 360) % 360;
-}
-
-/**
- * Ascendant longitude from LST and geographic latitude.
- * Standard formula: tan(ASC) = -cos(RAMC) / (sin(ε)·tan(φ) + cos(ε)·sin(RAMC))
- */
-function calcAscendant(lstDeg, latDeg) {
-  const toRad = (d) => d * Math.PI / 180;
-  const toDeg = (r) => r * 180 / Math.PI;
-
-  const ramc = toRad(lstDeg);   // Right Ascension of Midheaven in radians
-  const lat  = toRad(latDeg);
-  const eps  = toRad(23.4397);  // obliquity of ecliptic (approx)
-
-  const y = -Math.cos(ramc);
-  const x =  Math.sin(eps) * Math.tan(lat) + Math.cos(eps) * Math.sin(ramc);
-
-  let asc = toDeg(Math.atan2(y, x));
-
-  // Correct quadrant based on RAMC
-  if (lstDeg >= 0   && lstDeg < 90)  asc = (asc + 360) % 360;
-  if (lstDeg >= 90  && lstDeg < 180) asc = (asc + 180) % 360;
-  if (lstDeg >= 180 && lstDeg < 270) asc = (asc + 180) % 360;
-  if (lstDeg >= 270 && lstDeg < 360) asc = (asc + 360) % 360;
-
-  return ((asc % 360) + 360) % 360;
-}
-
-/**
- * Midheaven (MC) longitude — simply the LST converted to ecliptic.
- */
-function calcMidheaven(lstDeg) {
-  // MC = atan(tan(RAMC) / cos(ε))
-  const toRad = (d) => d * Math.PI / 180;
-  const toDeg = (r) => r * 180 / Math.PI;
-  const ramc  = toRad(lstDeg);
-  const eps   = toRad(23.4397);
-  let mc = toDeg(Math.atan(Math.tan(ramc) / Math.cos(eps)));
-  // Quadrant correction
-  if (lstDeg >= 0   && lstDeg < 180) mc = (mc + 360) % 360;
-  if (lstDeg >= 180 && lstDeg < 360) mc = (mc + 180) % 360;
-  return ((mc % 360) + 360) % 360;
-}
-
-// ─── House system (Regiomontanus) ─────────────────────────────────────────────
-
-function calcRegiomontanusHouses(lstDeg, latDeg) {
-  const toRad = (d) => d * Math.PI / 180;
-  const toDeg = (r) => r * 180 / Math.PI;
-
-  const ramc = toRad(lstDeg);
-  const lat  = toRad(latDeg);
-  const eps  = toRad(23.4392911); 
-
-  const houseCusps = {};
-
-  const hOffsets = {
-    10: 0, 11: 30, 12: 60, 1: 90, 2: 120, 3: 150
-  };
-
-  for (let i of [10, 11, 12, 1, 2, 3]) {
-    const H = toRad(hOffsets[i]);
-    const alpha = ramc + H;
-    const y = Math.sin(alpha);
-    const x = Math.cos(alpha) * Math.cos(eps) - Math.tan(lat) * Math.sin(H) * Math.sin(eps);
-    let cuspLon = toDeg(Math.atan2(y, x));
-    cuspLon = ((cuspLon % 360) + 360) % 360;
-    
-    houseCusps[i] = cuspLon;
-    const oppositeCusp = i < 7 ? i + 6 : i - 6;
-    houseCusps[oppositeCusp] = ((cuspLon + 180) % 360);
-  }
-
-  return { houseCusps };
-}
+// Legacy math removed — using Swiss Ephemeris for high-precision Regiomontanus houses.
 
 /**
  * Determine which house a planet is in using exact cusps.
@@ -426,25 +315,21 @@ const PLANET_META = {
  * @param {number} lng       — geographic longitude of querent
  * @returns {Object} full horary chart
  */
-export function castHoraryChart(question, date = new Date(), lat = 0, lng = 0) {
-  const JD  = julianDay(date);
-  const lst = localSiderealTime(JD, lng);
-  const asc = calcAscendant(lst, lat);
-  const mc  = calcMidheaven(lst);
-
-  // Planet positions (pass asc to calculate Part of Fortune)
-  const rawPositions = getPlanetPositions(date, asc, { lat, lon: lng });
+export async function castHoraryChart(question, date = new Date(), lat = 0, lng = 0) {
+  // 1. Get professional houses (Regiomontanus system 'R')
+  const houses = await getPrecisionHouses(date, lat, lng, 'R');
+  const asc = houses.ascendant;
+  const mc = houses.mc;
   
-  // Tomorrow's positions for daily motion
-  const tomorrow = new Date(date.getTime() + 86400000);
-  const rawPositionsTomorrow = getPlanetPositions(tomorrow, asc, { lat, lon: lng });
+  const houseCusps = {};
+  houses.cusps.forEach((c, i) => houseCusps[i + 1] = c);
 
-  // Calculate Regiomontanus Houses
-  const { houseCusps } = calcRegiomontanusHouses(lst, lat);
-  houseCusps[1] = asc;
-  houseCusps[10] = mc;
-  houseCusps[7] = (asc + 180) % 360;
-  houseCusps[4] = (mc + 180) % 360;
+  // 2. Planet positions
+  const rawPositions = await getPlanetPositions(date, asc, { lat, lon: lng });
+  
+  // 3. Tomorrow's positions for daily motion
+  const tomorrow = new Date(date.getTime() + 86400000);
+  const rawPositionsTomorrow = await getPlanetPositions(tomorrow, asc, { lat, lon: lng });
 
   const planets = {};
 

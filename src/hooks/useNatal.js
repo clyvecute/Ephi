@@ -3,7 +3,7 @@
  * Manages natal chart state with localStorage persistence.
  */
 import { useState, useEffect } from 'react';
-import { generateNatalChart, generatePrecisionNatalChart } from '../lib/natal.js';
+import { generatePrecisionNatalChart } from '../lib/natal.js';
 import { auth, db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
@@ -68,12 +68,11 @@ export function useNatal() {
     setLoading(true);
     setError(null);
     try {
-      let chart;
-      if (birthData.precision) {
-        chart = await generatePrecisionNatalChart(birthData, { sidereal: birthData.sidereal });
-      } else {
-        chart = generateNatalChart(birthData, { sidereal: birthData.sidereal });
-      }
+      // Always use precision chart now
+      const chart = await generatePrecisionNatalChart(birthData, {
+        sidereal: birthData.sidereal,
+        houseSystem: birthData.houseSystem || 'P',
+      });
       
       // Save local first for instant UX
       localStorage.setItem(STORAGE_KEY, JSON.stringify(chart));

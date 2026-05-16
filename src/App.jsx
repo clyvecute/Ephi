@@ -8,7 +8,7 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import { ToastProvider } from './components/Toast';
 import { scheduleAspectChecks, getPreferences } from './lib/notifications';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Footer from './components/Footer';
 
 // Lazy load pages — keeps initial bundle small
@@ -97,8 +97,11 @@ export default function App() {
   useEffect(() => {
     // 1. Log page view
     logPageView(location.pathname);
+    
+    // 2. Reset scroll position to top
+    window.scrollTo(0, 0);
 
-    // 2. Start notifications background loop if enabled
+    // 3. Start notifications background loop if enabled
     const prefs = getPreferences();
     if (prefs.enabled) {
       try {
@@ -106,7 +109,14 @@ export default function App() {
         if (natal) scheduleAspectChecks(natal);
       } catch {}
     }
-  }, []);
+
+    // 3. Apply Dark Theme for specific routes
+    if (location.pathname === '/admin' || location.pathname === '/sys-archive') {
+      document.body.classList.add('dark-theme');
+    } else {
+      document.body.classList.remove('dark-theme');
+    }
+  }, [location.pathname]);
 
   return (
     <AuthProvider>
@@ -168,8 +178,7 @@ export default function App() {
               {/* About page */}
               <Route path="/about" element={<AboutPage />} />
 
-              {/* Admin Dashboard */}
-              <Route path="/admin" element={<AdminPage />} />
+
 
               {/* Catch-all — redirect unknown routes to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />

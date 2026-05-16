@@ -131,12 +131,19 @@ export function getActiveAspects(
  
   for (let i = 0; i < transitPlanets.length; i++) {
     const tPlanet = transitPlanets[i];
-    const tLon = currentPositions[tPlanet];
+    const tVal = currentPositions[tPlanet];
+    if (tVal == null) continue;
+    
+    // Support both simple longitude (number) and precision object ({longitude, ...})
+    const tLon = typeof tVal === 'object' ? tVal.longitude : tVal;
     if (tLon == null) continue;
  
     for (let j = 0; j < natalPlanets.length; j++) {
       const nPlanet = natalPlanets[j];
-      const nLon = nPositions[nPlanet];
+      const nVal = nPositions[nPlanet];
+      if (nVal == null) continue;
+
+      const nLon = typeof nVal === 'object' ? nVal.longitude : nVal;
       if (nLon == null) continue;
 
       // Avoid duplicate transit-to-transit aspects

@@ -27,6 +27,62 @@ function BentoCard({ title, desc, sizeClass, imgUrl, children }) {
   );
 }
 
+function StarryDecoderText({ text, delayOffset = 500 }) {
+  const [revealedChars, setRevealedChars] = useState(0);
+  const [tick, setTick] = useState(0);
+  const chars = text.split('');
+  const starSymbols = ['✦', '✧', '·', '*', '+', '°'];
+
+  useEffect(() => {
+    const to = setTimeout(() => {
+      const int = setInterval(() => {
+        setRevealedChars(prev => {
+          if (prev >= chars.length) {
+            clearInterval(int);
+            return prev;
+          }
+          return prev + 1; 
+        });
+      }, 25);
+      return () => clearInterval(int);
+    }, delayOffset);
+    return () => clearTimeout(to);
+  }, [chars.length, delayOffset]);
+
+  useEffect(() => {
+    if (revealedChars >= chars.length) return;
+    const int = setInterval(() => setTick(t => t + 1), 40);
+    return () => clearInterval(int);
+  }, [revealedChars, chars.length]);
+
+  return (
+    <p className="landing-paragraph" style={{ textAlign: 'center', minHeight: '80px' }}>
+      {chars.map((char, i) => {
+        if (char === ' ') return <span key={i}> </span>;
+
+        let displayChar = char;
+        let opacity = 1;
+        let color = 'inherit';
+        
+        if (i < revealedChars) {
+          displayChar = char;
+        } else if (i < revealedChars + 8) { // Decoding tail length
+          displayChar = starSymbols[(i + tick) % starSymbols.length];
+          color = 'var(--accent)';
+        } else {
+          opacity = 0;
+        }
+
+        return (
+          <span key={i} style={{ opacity, color, transition: 'color 0.1s ease' }}>
+            {displayChar}
+          </span>
+        );
+      })}
+    </p>
+  );
+}
+
 export default function Landing() {
   const location = useLocation();
   const navigate = useNavigate();
@@ -75,11 +131,10 @@ export default function Landing() {
 
         <h1 className="landing-huge-serif">ephi</h1>
 
-        <p className="landing-paragraph">
-          Unlock the wisdom of the stars. By integrating ancient techniques with
-          modern insights, Ephi provides you with a clear, celestial roadmap
-          for your journey.
-        </p>
+        <StarryDecoderText 
+          text="Unlock the wisdom of the stars. By integrating ancient techniques with modern insights, Ephi provides you with a clear, celestial roadmap for your journey." 
+          delayOffset={300} 
+        />
 
         <div className="scroll-indicator">
           <span className="scroll-text">SCROLL</span>
@@ -96,7 +151,13 @@ export default function Landing() {
           {navLinks.map(({ to, label }) => (
             <Link
               key={to}
-              to={to}
+              to={currentUser ? to : '#'}
+              onClick={(e) => {
+                if (!currentUser) {
+                  e.preventDefault();
+                  loginWithGoogle();
+                }
+              }}
               className={`landing-nav-link${location.pathname === to ? ' active' : ''}`}
             >
               {label}
@@ -194,7 +255,7 @@ export default function Landing() {
 
       {/* ── SECTION 4: AI INSIGHTS ─────────────────────────────── */}
       <section className="ai-section">
-        <div className="ai-grid">
+        <div className="ai-container">
           <div className="chat-preview">
             <div className="chat-bubble bubble-user">What does my Mars in the 8th house mean for my career?</div>
             <div className="chat-bubble bubble-ai">
@@ -204,9 +265,9 @@ export default function Landing() {
             </div>
           </div>
           <div className="ai-content">
-            <span className="section-label">The Oracle</span>
-            <h2 className="bento-title" style={{ fontSize: '4rem' }}>Ancient logic,<br/>Modern AI.</h2>
-            <p className="bento-desc" style={{ maxWidth: '450px', fontSize: '1.2rem' }}>
+            <span className="ai-label">The Oracle</span>
+            <h2 className="ai-title">Ancient logic,<br/>Modern AI.</h2>
+            <p className="ai-description">
               We've bridged the gap between traditional Hellenistic techniques and
               cutting-edge LLMs to provide context-aware readings that feel human.
             </p>

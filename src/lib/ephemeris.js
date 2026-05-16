@@ -4,7 +4,7 @@
  * Calculates highly accurate geocentric ecliptic longitudes using astronomy-engine.
  */
 
-import * as Astronomy from 'astronomy-engine';
+import { getPrecisionPositions, initSwe } from './swe.js';
 
 // Normalise any angle to [0, 360)
 function norm(deg) {
@@ -12,81 +12,31 @@ function norm(deg) {
 }
 
 /**
- * Calculates the Lahiri Ayanamsa for a given Date object.
- * @param {Date} date
- * @returns {number} Ayanamsa in degrees
+ * Returns professional-grade ecliptic longitudes (0–360°) using Swiss Ephemeris.
  */
-export function getAyanamsa(date) {
+export async function getPlanetPositions(date = new Date(), ascLon = null, options = { sidereal: false, lat: 0, lon: 0 }) {
   const safeDate = (date instanceof Date && !isNaN(date.getTime())) ? date : new Date();
-  const jd = Astronomy.MakeTime(safeDate).tt;
-  const J2000 = 2451545.0;
-  const t = (jd - J2000) / 36525;
-  // Simple linear approximation of Lahiri Ayanamsa
-  const LAHIRI_EPOCH = 23.85; 
-  return norm(LAHIRI_EPOCH + (5023.0 / 3600.0) * t);
-}
+  
+  // 1. Get high-precision data from SWE
+  const raw = await getPrecisionPositions(safeDate, options);
+  
+  // 2. Format to Ephi standard
+  const res = {};
+  for (const [key, val] of Object.entries(raw)) {
+    res[key] = val.longitude; // Keep simple numeric for core compatibility
+  }
 
-/**
- * Approximate Mean North Node longitude.
- */
-function calculateMeanNode(date) {
-  const J2000 = new Date('2000-01-01T12:00:00Z');
-  const diffDays = (date - J2000) / (1000 * 60 * 60 * 24);
-  // Mean node moves ~0.0529536 degrees per day (retrograde)
-  return norm(125.044522 - 0.0529537648 * diffDays);
-}
+  // 3. Special handling for nodes (standardizing names)
+  if (raw.node) {
+    res.nnode = raw.node.longitude;
+    res.snode = norm(raw.node.longitude + 180);
+  }
 
-/**
- * Approximate Mean Lilith longitude.
- */
-function calculateLilith(date) {
-  const J2000 = new Date('2000-01-01T12:00:00Z');
-  const diffDays = (date - J2000) / (1000 * 60 * 60 * 24);
-  // Mean Lilith moves ~0.111403 degrees per day
-  return norm(176.906 + 0.1114035 * diffDays);
-}
-
-/**
- * Returns ecliptic longitudes (0–360°) for all planets at the given date.
- */
-export function getPlanetPositions(date = new Date(), ascLon = null, options = { sidereal: false, lat: 0, lon: 0 }) {
-  // Ensure date is a valid Date object
-  const safeDate = (date instanceof Date && !isNaN(date.getTime())) ? date : new Date();
-  const time = Astronomy.MakeTime(safeDate);
-  const ayanamsa = options.sidereal ? getAyanamsa(date) : 0;
-  const observer = new Astronomy.Observer(options.lat || 0, options.lon || 0, 0);
-
-  const getLon = (body) => {
-    const vec = Astronomy.GeoVector(body, time, true);
-    return norm(Astronomy.Ecliptic(vec).elon - ayanamsa);
-  };
-
-  const res = {
-    sun:     getLon(Astronomy.Body.Sun),
-    moon:    getLon(Astronomy.Body.Moon),
-    mercury: getLon(Astronomy.Body.Mercury),
-    venus:   getLon(Astronomy.Body.Venus),
-    mars:    getLon(Astronomy.Body.Mars),
-    jupiter: getLon(Astronomy.Body.Jupiter),
-    saturn:  getLon(Astronomy.Body.Saturn),
-    uranus:  getLon(Astronomy.Body.Uranus),
-    neptune: getLon(Astronomy.Body.Neptune),
-    pluto:   getLon(Astronomy.Body.Pluto),
-    nnode:   norm(calculateMeanNode(date) - ayanamsa),
-    snode:   norm(calculateMeanNode(date) + 180 - ayanamsa),
-    lilith:  norm(calculateLilith(date) - ayanamsa),
-  };
-
-  // Calculate Part of Fortune if ASC is available
+  // 4. Calculate Part of Fortune if ASC is available
   if (ascLon != null) {
     const sun = res.sun;
     const moon = res.moon;
-    
-    // In astrology, if the Sun is between the Descendant and the Ascendant (diff > 180), it's above the horizon (Day chart).
-    // If it's between the Ascendant and the Descendant (diff < 180), it's below the horizon (Night chart).
     const isDay = norm(sun - ascLon) > 180;
-    
-    // Traditional: Day = Asc + Moon - Sun, Night = Asc + Sun - Moon
     if (isDay) {
       res.fortune = norm(ascLon + moon - sun);
     } else {

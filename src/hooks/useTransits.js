@@ -17,10 +17,10 @@ export function useTransits(natalChart = null, intervalMs = DEFAULT_INTERVAL_MS,
   const [tick, setTick] = useState(0);
   const intervalRef = useRef(null);
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     const now = baseDate ? new Date(baseDate) : new Date();
     const options = { sidereal: !!natalChart?.meta?.sidereal };
-    const positions = getPlanetPositions(now, null, options);
+    const positions = await getPlanetPositions(now, null, options);
     
     // getActiveAspects without natal chart gives sky aspects
     let aspects = getActiveAspects(positions);
@@ -44,7 +44,7 @@ export function useTransits(natalChart = null, intervalMs = DEFAULT_INTERVAL_MS,
     }
 
     setTick(t => t + 1);
-  }, [natalChart]);
+  }, [natalChart, baseDate]);
 
   // Initial fetch + interval
   useEffect(() => {

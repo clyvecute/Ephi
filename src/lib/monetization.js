@@ -61,7 +61,7 @@ export async function addCredits(amount) {
  * Tier definitions for the Support Page.
  */
 export const CREDIT_TIERS = [
-  { id: 'tier_1', amount: 10,  price: 150, label: 'Neophyte Bundle',  description: '10 High-Precision Readings' },
-  { id: 'tier_2', amount: 50,  price: 500, label: 'Adept Bundle',     description: '50 High-Precision Readings + Priority Support' },
-  { id: 'tier_3', amount: 200, price: 1500, label: 'Master Grimoire', description: '200 Readings for serious practitioners' }
+  { id: 'tier_1', amount: 10,  price: 3,    label: 'Neophyte Bundle',  description: '10 High-Precision Readings' },
+  { id: 'tier_2', amount: 50,  price: 10,   label: 'Adept Bundle',     description: '50 High-Precision Readings + Priority Support' },
+  { id: 'tier_3', amount: 200, price: 30,   label: 'Master Grimoire', description: '200 Readings for serious practitioners' }
 ];

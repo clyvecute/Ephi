@@ -1,437 +1,468 @@
 // src/components/AstroChartWheel.jsx
-//
-// Professional SVG chart wheel using @astrodraw/astrochart
-// Closest open-source equivalent to Astro-Seek's chart style.
-//
-// Usage:
-//   // Natal only
-//   <AstroChartWheel natal={natalData} size={500} />
-//
-//   // Natal + transits overlay (bi-wheel)
-//   <AstroChartWheel natal={natalData} transits={currentPositions} size={500} />
-//
-//   // Synastry (bi-wheel with person B as outer ring)
-//   <AstroChartWheel natal={natalDataA} transits={natalDataB} size={500} mode="synastry" />
- 
-import { useEffect, useRef, useId } from 'react';
- 
-// ─── Data formatters ──────────────────────────────────────────────────────────
-// astrochart expects planets as { PlanetName: [longitude, speed?] }
-// Our natal data is { sun: { longitude: 36.28 }, moon: { longitude: ... } }
- 
-const PLANET_KEY_MAP = {
-  sun:     'Sun',
-  moon:    'Moon',
-  mercury: 'Mercury',
-  venus:   'Venus',
-  mars:    'Mars',
-  jupiter: 'Jupiter',
-  saturn:  'Saturn',
-  uranus:  'Uranus',
-  neptune: 'Neptune',
-  pluto:   'Pluto',
-  nnode:   'North Node',
-  snode:   'South Node',
-  lilith:  'Lilith',
-  fortune: 'Part of Fortune',
-  ascendant: 'Ascendant',
-  mc:        'Midheaven',
+// Custom SVG chart wheel — Astro-Seek grade quality.
+// No external chart library dependency.
+
+import { useMemo, useCallback } from 'react';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const SIGNS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'];
+
+const SIGN_GLYPHS = {
+  Aries:'♈', Taurus:'♉', Gemini:'♊', Cancer:'♋', Leo:'♌', Virgo:'♍',
+  Libra:'♎', Scorpio:'♏', Sagittarius:'♐', Capricorn:'♑', Aquarius:'♒', Pisces:'♓',
 };
- 
-/**
- * Convert our natal/position data to astrochart format.
- * @param {Object} data — { planets: { sun: { longitude }, ... } } OR { sun: 36.28, ... }
- * @returns {{ planets: { Sun: [lon] }, cusps: number[] }}
- */
-function toAstroChart(data) {
-  if (!data) return null;
- 
-  const planets = {};
- 
-  // Handle both formats
-  const source = data.planets || data;
- 
-  for (const [key, val] of Object.entries(source)) {
-    const chartKey = PLANET_KEY_MAP[key];
-    if (!chartKey) continue;
-    const lon = typeof val === 'object' ? val.longitude : val;
-    if (lon == null || isNaN(lon)) continue;
-    planets[chartKey] = [parseFloat(lon.toFixed(4))];
-  }
 
-  // Handle angles if they are not in the planets list but in the root data
-  if (data.ascendant && !planets.Ascendant) {
-    const lon = typeof data.ascendant === 'object' ? data.ascendant.longitude : data.ascendant;
-    if (lon != null && !isNaN(lon)) planets.Ascendant = [parseFloat(lon.toFixed(4))];
-  }
-  if (data.mc && !planets.Midheaven) {
-    const lon = typeof data.mc === 'object' ? data.mc.longitude : data.mc;
-    if (lon != null && !isNaN(lon)) planets.Midheaven = [parseFloat(lon.toFixed(4))];
-  }
- 
-  // Generate house cusps if ascendant is available
-  // natal chart has .ascendant object, transit data might just be planets
-  let ascLon = null;
-  if (data.ascendant && typeof data.ascendant === 'object') {
-    ascLon = data.ascendant.longitude;
-  } else if (typeof data.ascendant === 'number') {
-    ascLon = data.ascendant;
-  } else if (data.asc && typeof data.asc === 'object') {
-    ascLon = data.asc.longitude;
-  }
+const SIGN_COLORS = [
+  '#fce4e4','#e8f5e9','#fff9c4','#e3f2fd',
+  '#ffe0b2','#f1f8e9','#e0f2f1','#f3e5f5',
+  '#fff3e0','#efebe9','#e1f5fe','#e8eaf6',
+];
 
-  const cusps = generateCusps(ascLon);
+const ELEMENT_COLORS = {
+  fire:'#e06c75', earth:'#98c379', air:'#61afef', water:'#c678dd',
+};
 
-  return { planets, cusps };
+const SIGN_ELEMENTS = {
+  Aries:'fire', Leo:'fire', Sagittarius:'fire',
+  Taurus:'earth', Virgo:'earth', Capricorn:'earth',
+  Gemini:'air', Libra:'air', Aquarius:'air',
+  Cancer:'water', Scorpio:'water', Pisces:'water',
+};
+
+const PLANET_GLYPHS = {
+  sun:'☉', moon:'☽', mercury:'☿', venus:'♀', mars:'♂',
+  jupiter:'♃', saturn:'♄', uranus:'♅', neptune:'♆', pluto:'♇',
+  node:'☊', nnode:'☊', snode:'☋', lilith:'⚸', fortune:'⊕',
+};
+
+const PLANET_COLORS = {
+  sun:'#f5a623', moon:'#a0a0d0', mercury:'#7ec8e3', venus:'#98c379',
+  mars:'#e06c75', jupiter:'#c678dd', saturn:'#c0a070', uranus:'#56b6c2',
+  neptune:'#6ba8d6', pluto:'#e5c07b', node:'#aaaaaa', nnode:'#aaaaaa', snode:'#aaaaaa',
+};
+
+const ASPECT_CONFIG = {
+  conjunction: { deg:0,   color:'#C9A84C', width:2.5, dash:'' },
+  opposition:  { deg:180, color:'#e06c75', width:2.0, dash:'' },
+  square:      { deg:90,  color:'#e06c75', width:1.5, dash:'' },
+  trine:       { deg:120, color:'#5CB87A', width:1.5, dash:'' },
+  sextile:     { deg:60,  color:'#5B7FD4', width:1.0, dash:'4,3' },
+  quincunx:    { deg:150, color:'#888888', width:0.8, dash:'3,4' },
+  semisextile: { deg:30,  color:'#aaaaaa', width:0.8, dash:'2,4' },
+};
+
+// ─── Geometry helpers ─────────────────────────────────────────────────────────
+
+/** Convert ecliptic longitude to SVG angle (0° Aries = 9 o'clock, clockwise) */
+function eclipticToSvgAngle(lon, ascendant = 0) {
+  // Rotate so ascendant is on the left (180° in SVG terms)
+  return (180 - (lon - ascendant) + 360) % 360;
 }
- 
-/**
- * Generate 12 house cusps.
- * If ascendant is known, uses whole sign houses.
- * Otherwise falls back to equal houses from 0° Aries.
- */
-function generateCusps(ascLon) {
-  if (ascLon != null && !isNaN(ascLon)) {
-    // Whole sign: ascendant sign starts house 1
-    const ascSign = Math.floor(((parseFloat(ascLon) % 360) + 360) % 360 / 30);
-    return Array.from({ length: 12 }, (_, i) => ((ascSign + i) * 30) % 360);
-  }
-  // No ascendant or invalid — equal houses from 0° (purely visual)
-  return Array.from({ length: 12 }, (_, i) => (i * 30) % 360);
+
+function polarToXY(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
- 
-// ─── Dark theme settings ──────────────────────────────────────────────────────
- 
-const DARK_SETTINGS = {
-  // Background
-  COLOR_BACKGROUND:          '#0d0c14',
- 
-  // Zodiac sign ring
-  COLORS_SIGNS: [
-    // Fire: Aries Leo Sag — dark red/orange tones
-    '#1a0d0d', '#100808', '#180c08',
-    // Water: Cancer Scorpio Pisces — dark blue/teal
-    '#0a0f1a', '#08100f', '#0a0d18',
-    // Air: Gemini Libra Aquarius — dark slate
-    '#0d1018', '#0c0f18', '#0d1020',
-    // Earth: Taurus Virgo Cap — dark green/brown
-    '#0d1208', '#0c1008', '#0f120a',
-  ],
- 
-  // Lines & circles
-  CIRCLE_COLOR:              '#2a2740',
-  LINE_COLOR:                '#2a2740',
-  CIRCLE_STRONG:             1,
- 
-  // Planet symbols
-  POINTS_COLOR:              '#1e1c2a',
-  POINTS_TEXT_SIZE:          10,
-  POINTS_STROKE:             1.2,
- 
-  // Sign symbols
-  SIGNS_COLOR:               '#5a5470',
-  SIGNS_STROKE:              1.2,
- 
-  // House cusp numbers
-  CUSPS_FONT_COLOR:          '#7a7090',
-  CUSPS_STROKE:              0.8,
- 
-  // Axis labels (ASC, MC, DS, IC)
-  SYMBOL_AXIS_FONT_COLOR:    '#c9a84c',
-  SYMBOL_AXIS_STROKE:        1.8,
- 
-  // Aspect line colours
-  ASPECTS: {
-    conjunction: { degree: 0,   orbit: 8,  color: '#C9A84C' }, // gold
-    opposition:  { degree: 180, orbit: 8,  color: '#e06c75' }, // red-ish
-    square:      { degree: 90,  orbit: 7,  color: '#e06c75' }, // red-ish
-    trine:       { degree: 120, orbit: 8,  color: '#5CB87A' }, // green
-    sextile:     { degree: 60,  orbit: 5,  color: '#5B7FD4' }, // blue
-  },
- 
-  // Layout
-  SYMBOL_SCALE:              1.1,
-  MARGIN:                    50,
-  PADDING:                   18,
-  COLLISION_RADIUS:          12,
-  INDOOR_CIRCLE_RADIUS_RATIO:2.1,
-  INNER_CIRCLE_RADIUS_RATIO: 8,
-  RULER_RADIUS:              4,
-  SHIFT_IN_DEGREES:          180,
- 
-  // Features
-  SHOW_DIGNITIES_TEXT:       false,
-  SHOW_DEGREES:              true,   // Show the degree numbers!
-  ADD_CLICK_AREA:            false,
-  STROKE_ONLY:               false,
-  DEBUG:                     false,
-};
 
-const LIGHT_SETTINGS = {
-  ...DARK_SETTINGS,
-  COLOR_BACKGROUND: '#ffffff',
-  CIRCLE_COLOR: '#dcdcdc',
-  LINE_COLOR: '#dcdcdc',
-  POINTS_COLOR: '#222222',
-  SIGNS_COLOR: '#444444',
-  CUSPS_FONT_COLOR: '#888888',
-  SYMBOL_AXIS_FONT_COLOR: '#b8860b', // Darker gold
-  
-  // High-fidelity sign ring colors (Astro-Seek style)
-  COLORS_SIGNS: [
-    '#fce4e4', '#e8f5e9', '#fff9c4', '#e3f2fd', // Ari (F), Tau (E), Gem (A), Can (W)
-    '#ffe0b2', '#f1f8e9', '#e0f2f1', '#f3e5f5', // Leo (F), Vir (E), Lib (A), Sco (W)
-    '#fff3e0', '#efebe9', '#e1f5fe', '#e8eaf6', // Sag (F), Cap (E), Aqu (A), Pis (W)
-  ],
+function arcPath(cx, cy, r, startDeg, endDeg) {
+  const s = polarToXY(cx, cy, r, startDeg);
+  const e = polarToXY(cx, cy, r, endDeg);
+  const large = ((endDeg - startDeg + 360) % 360) > 180 ? 1 : 0;
+  return `M ${s.x} ${s.y} A ${r} ${r} 0 ${large} 1 ${e.x} ${e.y}`;
+}
 
-  SYMBOL_SCALE: 1.2,
-  MARGIN: 45,
-  PADDING: 22,
-  INDOOR_CIRCLE_RADIUS_RATIO: 1.8,
-  INNER_CIRCLE_RADIUS_RATIO: 9,
-  POINTS_TEXT_SIZE: 11,
-};
- 
-// ─── React component ──────────────────────────────────────────────────────────
- 
+// ─── Main SVG Component ───────────────────────────────────────────────────────
+
 export default function AstroChartWheel({
-  natal,                // natal chart data (required)
-  transits  = null,     // transit or synastry partner data (optional)
-  aspects   = [],       // aspects array to link to visual lines
-  size      = 480,      // chart diameter in px
-  mode      = 'natal',  // 'natal' | 'transit' | 'synastry'
-  className = '',
-  style     = {},
-  onReady   = null,     // called when chart renders: onReady(chartInstance)
-  onAspectClick = null, // (aspectData) => void
-  onHouseClick  = null, // (houseNum) => void
+  natal,
+  transits   = null,
+  aspects    = [],
+  size       = 500,
+  mode       = 'natal',
+  onAspectClick = null,
+  onHouseClick  = null,
 }) {
-  const containerId = useId().replace(/:/g, 'c');
-  const containerRef = useRef(null);
-  const chartRef     = useRef(null);
-  const lastAspects  = useRef(aspects);
+  const cx = size / 2;
+  const cy = size / 2;
 
-  useEffect(() => {
-    lastAspects.current = aspects;
-  }, [aspects]);
- 
-  useEffect(() => {
-    if (!containerRef.current || !natal) return;
- 
-    // Dynamically import to avoid SSR issues
-    import('@astrodraw/astrochart').then(({ Chart }) => {
-      // Clear any previous chart
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
+  // Radii
+  const R = {
+    outer:     size * 0.498,  // outermost clip
+    ruler:     size * 0.478,  // degree tick outer edge
+    rulerIn:   size * 0.445,  // degree tick inner edge
+    signOuter: size * 0.445,
+    signInner: size * 0.385,
+    signGlyph: size * 0.415,
+    cuspsOuter:size * 0.385,
+    cuspsInner:size * 0.310,
+    houseNum:  size * 0.348,
+    planets:   size * 0.268,
+    aspectRing:size * 0.220,
+    center:    size * 0.150,
+  };
+
+  // Extract ascendant longitude
+  const ascLon = useMemo(() => {
+    if (!natal) return 0;
+    if (natal.ascendant?.longitude != null) return natal.ascendant.longitude;
+    if (natal.asc?.longitude != null) return natal.asc.longitude;
+    if (typeof natal.ascendant === 'number') return natal.ascendant;
+    if (natal.cusps?.[0]) return typeof natal.cusps[0] === 'object' ? natal.cusps[0].longitude : natal.cusps[0];
+    return 0;
+  }, [natal]);
+
+  // Extract cusps
+  const cusps = useMemo(() => {
+    if (!natal) return Array.from({length:12}, (_,i) => i*30);
+    if (natal.cusps && natal.cusps.length >= 12) {
+      return natal.cusps.map(c => typeof c === 'object' ? c.longitude : c);
+    }
+    // Whole-sign fallback
+    const ascSign = Math.floor(((ascLon % 360) + 360) % 360 / 30);
+    return Array.from({length:12}, (_,i) => (ascSign*30 + i*30) % 360);
+  }, [natal, ascLon]);
+
+  // Extract planets
+  const planets = useMemo(() => {
+    if (!natal) return [];
+    const src = natal.positions || natal.planets || natal;
+    return Object.entries(src)
+      .filter(([k]) => PLANET_GLYPHS[k.toLowerCase()])
+      .map(([k, v]) => {
+        const lon = typeof v === 'object' ? v.longitude : v;
+        if (lon == null || isNaN(lon)) return null;
+        const deg = Math.floor(((lon % 360) + 360) % 360);
+        const min = Math.floor((((lon % 360) + 360) % 360 - deg) * 60);
+        const retrograde = v?.retrograde || v?.isRetrograde || (v?.speed != null && v.speed < 0);
+        return { key: k.toLowerCase(), lon: ((lon % 360) + 360) % 360, deg, min, retrograde };
+      })
+      .filter(Boolean);
+  }, [natal]);
+
+  // Transit planets
+  const transitPlanets = useMemo(() => {
+    if (!transits) return [];
+    const src = transits.positions || transits.planets || transits;
+    return Object.entries(src)
+      .filter(([k]) => PLANET_GLYPHS[k.toLowerCase()])
+      .map(([k, v]) => {
+        const lon = typeof v === 'object' ? v.longitude : v;
+        if (lon == null || isNaN(lon)) return null;
+        const deg = Math.floor(((lon % 360) + 360) % 360);
+        const min = Math.floor((((lon % 360) + 360) % 360 - deg) * 60);
+        const retrograde = v?.retrograde || v?.isRetrograde || (v?.speed != null && v.speed < 0);
+        return { key: k.toLowerCase(), lon: ((lon % 360) + 360) % 360, deg, min, retrograde };
+      })
+      .filter(Boolean);
+  }, [transits]);
+
+  // Spread planets to avoid overlap
+  function spreadPlanets(planetList, radius) {
+    if (!planetList.length) return [];
+    const sorted = [...planetList].sort((a,b) => a.lon - b.lon);
+    const MIN_GAP_DEG = 7;
+    const result = sorted.map(p => ({ ...p, displayLon: p.lon }));
+    for (let iter = 0; iter < 5; iter++) {
+      for (let i = 0; i < result.length; i++) {
+        const prev = result[(i - 1 + result.length) % result.length];
+        let diff = (result[i].displayLon - prev.displayLon + 360) % 360;
+        if (diff < MIN_GAP_DEG) {
+          result[i].displayLon = (result[i].displayLon + (MIN_GAP_DEG - diff) / 2 + 360) % 360;
+          prev.displayLon = (prev.displayLon - (MIN_GAP_DEG - diff) / 2 + 360) % 360;
+        }
       }
- 
-      const natalFormatted    = toAstroChart(natal);
-      const transitFormatted  = transits ? toAstroChart(transits) : null;
- 
-      if (!natalFormatted) return;
- 
-      // Create chart instance
-      const settings = LIGHT_SETTINGS; // Always use light mode for now as requested
-      const chart = new Chart(containerId, size, size, settings);
- 
-      // Draw natal radix
-      const radix = chart.radix(natalFormatted);
-      radix.aspects();
- 
-      // Draw transit or synastry outer ring if provided
-      if (transitFormatted && transits) {
-        const transitChart = radix.transit(transitFormatted);
-        transitChart.aspects();
-      }
+    }
+    return result;
+  }
 
-      // ─── Post-render: Add interactivity ──────────────────────────
-      const svg = containerRef.current.querySelector('svg');
-      if (svg) {
-        // 1. Aspect Lines
-        const lines = Array.from(svg.querySelectorAll('g.aspects line, g.aspects path'));
-        lines.forEach((line, index) => {
-          line.style.cursor = 'pointer';
-          line.style.strokeWidth = '6px'; 
-          line.style.strokeOpacity = '0.4';
-          line.style.pointerEvents = 'auto';
-          line.addEventListener('mouseenter', () => { line.style.strokeOpacity = '1'; line.style.filter = 'drop-shadow(0 0 3px var(--accent))'; });
-          line.addEventListener('mouseleave', () => { line.style.strokeOpacity = '0.4'; line.style.filter = 'none'; });
-          line.addEventListener('click', (e) => {
-            e.stopPropagation();
-            const aspData = lastAspects.current[index] || { unknown: true, index };
-            if (onAspectClick) onAspectClick(aspData);
-          });
-        });
+  const spreadNatal   = useMemo(() => spreadPlanets(planets,   R.planets),   [planets]);
+  const spreadTransit = useMemo(() => spreadPlanets(transitPlanets, R.planets * 1.38), [transitPlanets]);
 
-        // 2. House Numbers
-        // @astrodraw/astrochart puts house numbers in <text> elements within the cusps group
-        const houseTexts = svg.querySelectorAll('g.cusps text');
-        houseTexts.forEach((txt) => {
-          const num = parseInt(txt.textContent);
-          if (isNaN(num)) return;
+  const toAngle = useCallback((lon) => eclipticToSvgAngle(lon, ascLon), [ascLon]);
 
-          txt.style.cursor = 'pointer';
-          txt.style.transition = 'all 0.2s';
-          txt.addEventListener('mouseenter', () => { txt.style.fill = 'var(--accent)'; txt.style.fontWeight = 'bold'; });
-          txt.addEventListener('mouseleave', () => { txt.style.fill = settings.CUSPS_FONT_COLOR; txt.style.fontWeight = 'normal'; });
-          txt.addEventListener('click', (e) => {
-            e.stopPropagation();
-            if (onHouseClick) onHouseClick(num);
-          });
-        });
-      }
-
-      chartRef.current = chart;
-      onReady?.(chart);
-    }).catch(err => {
-      console.error('[AstroChartWheel] Failed to load @astrodraw/astrochart:', err);
-      if (containerRef.current) {
-        containerRef.current.innerHTML = `
-          <div style="
-            display:flex;align-items:center;justify-content:center;
-            height:${size}px;color:#5a5470;font-size:13px;
-            font-family:Georgia,serif;text-align:center;padding:2rem;
-          ">
-            Chart library not found.<br/>
-            Run: <code style="background:#1e1c2a;padding:2px 6px;border-radius:4px;margin-top:8px;display:inline-block">
-              npm install @astrodraw/astrochart
-            </code>
-          </div>
-        `;
-      }
-    });
- 
-    return () => {
-      if (containerRef.current) containerRef.current.innerHTML = '';
-    };
-  }, [natal, transits, size, containerId, onReady, onAspectClick, onHouseClick]);
- 
   const handleDownload = () => {
-    const svg = containerRef.current?.querySelector('svg');
+    const svg = document.querySelector(`[data-ephi-chart] svg`);
     if (!svg) return;
-
-    const svgData = new XMLSerializer().serializeToString(svg);
+    const data = new XMLSerializer().serializeToString(svg);
     const canvas = document.createElement('canvas');
-    const svgSize = svg.getBoundingClientRect();
-    
-    // High-res export (3x scale)
     const scale = 3;
-    canvas.width = svgSize.width * scale || size * scale;
-    canvas.height = svgSize.height * scale || size * scale;
-    
+    canvas.width = size * scale;
+    canvas.height = size * scale;
     const ctx = canvas.getContext('2d');
-    
-    // Fill white background (since SVG might be transparent)
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
     const img = new Image();
     img.onload = () => {
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      const pngUrl = canvas.toDataURL('image/png');
       const a = document.createElement('a');
-      a.download = `ephi-chart-${mode}-${Date.now()}.png`;
-      a.href = pngUrl;
+      a.download = `ephi-chart-${Date.now()}.png`;
+      a.href = canvas.toDataURL('image/png');
       a.click();
     };
-    
-    const b64 = btoa(unescape(encodeURIComponent(svgData)));
-    img.src = "data:image/svg+xml;base64," + b64;
+    img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(data)));
   };
 
-  return (
-    <div
-      style={{
-        position:        'relative',
-        width:           '100%',
-        height:          'auto',
-        aspectRatio:     '1 / 1',
-        maxWidth:        size,
-        margin:          '0 auto',
-        background:      '#ffffff',
-        borderRadius:    '50%',
-        boxShadow:       '0 12px 48px -12px rgba(0,0,0,0.18), 0 0 1px 1px rgba(0,0,0,0.04)',
-        border:          '6px solid #f8f9fa',
-        ...style,
-      }}
-      className={className}
-    >
-      {/* Container must not have overflow:hidden if we want the download button to be outside the circle,
-          but if it's overflow:hidden, we place the button inside. */}
-      
-      {/* Chart renders here */}
-      <div
-        id={containerId}
-        ref={containerRef}
-        style={{ width: '100%', height: '100%', borderRadius: '50%', overflow: 'hidden' }}
-      />
- 
-      {/* Mode label */}
-      {mode !== 'natal' && (
-        <div style={{
-          position:   'absolute',
-          top:        16,
-          left:       '50%',
-          transform:  'translateX(-50%)',
-          fontSize:   '0.65rem',
-          fontFamily: 'Georgia, serif',
-          letterSpacing: '0.08em',
-          textTransform: 'uppercase',
-          color:      '#3d3a52',
-          pointerEvents: 'none',
-        }}>
-          {mode === 'synastry' ? 'Synastry' : 'Transits'}
-        </div>
-      )}
+  if (!natal) return null;
 
-      {/* Export Button */}
-      <button 
+  // ── SVG Build ────────────────────────────────────────────────────────────────
+
+  return (
+    <div style={{ position:'relative', width:size, height:size, margin:'0 auto' }} data-ephi-chart>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display:'block' }}>
+
+        {/* White background circle */}
+        <circle cx={cx} cy={cy} r={R.outer} fill="#ffffff" stroke="#e0e0e0" strokeWidth="1"/>
+
+        {/* ── 1. Degree ruler ring ─────────────────────────────────── */}
+        <circle cx={cx} cy={cy} r={R.ruler}  fill="none" stroke="#cccccc" strokeWidth="0.5"/>
+        <circle cx={cx} cy={cy} r={R.rulerIn} fill="#f8f9fa" stroke="#cccccc" strokeWidth="0.5"/>
+        {Array.from({length:360}, (_,i) => {
+          const isMajor = i % 10 === 0;
+          const isMid   = i % 5 === 0;
+          const tickLen = isMajor ? R.ruler - R.rulerIn : isMid ? (R.ruler - R.rulerIn)*0.6 : (R.ruler - R.rulerIn)*0.35;
+          const ang = toAngle(i);
+          const outer = polarToXY(cx, cy, R.ruler, ang);
+          const inner = polarToXY(cx, cy, R.ruler - tickLen, ang);
+          return (
+            <line key={i}
+              x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y}
+              stroke="#bbbbbb" strokeWidth={isMajor ? 1 : 0.5}
+            />
+          );
+        })}
+
+        {/* ── 2. Zodiac sign band ─────────────────────────────────── */}
+        {SIGNS.map((sign, i) => {
+          const startLon = i * 30;
+          const endLon   = startLon + 30;
+          const startAng = toAngle(startLon);
+          const endAng   = toAngle(endLon);
+          const midAng   = toAngle(startLon + 15);
+          const glyph    = polarToXY(cx, cy, R.signGlyph, midAng);
+          const elem     = SIGN_ELEMENTS[sign];
+          const elemColor = ELEMENT_COLORS[elem];
+          const outerArc = arcPath(cx, cy, R.signOuter, startAng, endAng);
+          const innerArc = arcPath(cx, cy, R.signInner, endAng, startAng);
+          const s1 = polarToXY(cx, cy, R.signOuter, startAng);
+          const s2 = polarToXY(cx, cy, R.signInner, startAng);
+          const e1 = polarToXY(cx, cy, R.signOuter, endAng);
+          const e2 = polarToXY(cx, cy, R.signInner, endAng);
+          return (
+            <g key={sign}>
+              <path
+                d={`${outerArc} L ${e2.x} ${e2.y} ${innerArc} L ${s1.x} ${s1.y} Z`}
+                fill={SIGN_COLORS[i]} stroke="#cccccc" strokeWidth="0.5"
+              />
+              {/* Sign divider lines */}
+              <line x1={s1.x} y1={s1.y} x2={s2.x} y2={s2.y} stroke="#bbbbbb" strokeWidth="0.7"/>
+              {/* Glyph */}
+              <text
+                x={glyph.x} y={glyph.y}
+                textAnchor="middle" dominantBaseline="central"
+                fontSize={size * 0.034} fill={elemColor} fontWeight="600"
+                style={{ userSelect:'none' }}
+              >
+                {SIGN_GLYPHS[sign]}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* ── 3. House cusp ring ──────────────────────────────────── */}
+        <circle cx={cx} cy={cy} r={R.cuspsOuter} fill="#fafafa" stroke="#d0d0d0" strokeWidth="0.7"/>
+        <circle cx={cx} cy={cy} r={R.cuspsInner} fill="#ffffff" stroke="#d0d0d0" strokeWidth="0.7"/>
+
+        {cusps.map((cuspLon, i) => {
+          const ang = toAngle(cuspLon);
+          const outer = polarToXY(cx, cy, R.cuspsOuter, ang);
+          const inner = polarToXY(cx, cy, R.cuspsInner, ang);
+          const isAxis = [0,3,6,9].includes(i);
+          // House number midpoint
+          const nextLon = cusps[(i+1)%12];
+          let midLon = cuspLon + ((nextLon - cuspLon + 360) % 360) / 2;
+          const midAng = toAngle(midLon);
+          const numPos = polarToXY(cx, cy, R.houseNum, midAng);
+          return (
+            <g key={i}>
+              <line x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y}
+                stroke={isAxis ? '#888888' : '#cccccc'}
+                strokeWidth={isAxis ? 1.2 : 0.6}
+              />
+              <text
+                x={numPos.x} y={numPos.y}
+                textAnchor="middle" dominantBaseline="central"
+                fontSize={size * 0.026} fill="#999999"
+                style={{ userSelect:'none', cursor:'pointer' }}
+                onClick={() => onHouseClick?.(i+1)}
+              >
+                {i+1}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* ── 4. ASC / DSC / MC / IC axis labels ─────────────────── */}
+        {[
+          { label:'AC', lon: ascLon,      side:-1 },
+          { label:'DC', lon: ascLon+180,  side:1  },
+          { label:'MC', lon: (natal.mc?.longitude ?? ascLon+270), side:0, top:true },
+          { label:'IC', lon: (natal.mc?.longitude ?? ascLon+270)+180, side:0, top:false },
+        ].map(({ label, lon, side, top }) => {
+          const ang = toAngle(((lon%360)+360)%360);
+          const pos = polarToXY(cx, cy, R.signOuter + size*0.028, ang);
+          return (
+            <text key={label} x={pos.x} y={pos.y}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={size * 0.030} fill="#b8860b" fontWeight="800"
+              style={{ userSelect:'none' }}
+            >
+              {label}
+            </text>
+          );
+        })}
+
+        {/* ── 5. Aspect lines (inner circle) ──────────────────────── */}
+        <circle cx={cx} cy={cy} r={R.aspectRing} fill="#fafafa" stroke="#e8e8e8" strokeWidth="0.5"/>
+        {aspects.map((asp, idx) => {
+          const p1key = (asp.transitPlanet || asp.planet1 || '').toLowerCase();
+          const p2key = (asp.natalPlanet  || asp.planet2 || '').toLowerCase();
+          const p1 = planets.find(p => p.key === p1key);
+          const p2 = planets.find(p => p.key === p2key);
+          if (!p1 || !p2) return null;
+          const cfg = ASPECT_CONFIG[asp.aspectName] || ASPECT_CONFIG.sextile;
+          const strengthMult = asp.strength === 'exact' ? 2.5 : asp.strength === 'strong' ? 1.8 : 1.0;
+          const a1 = toAngle(p1.lon);
+          const a2 = toAngle(p2.lon);
+          const pt1 = polarToXY(cx, cy, R.aspectRing, a1);
+          const pt2 = polarToXY(cx, cy, R.aspectRing, a2);
+          return (
+            <line key={idx}
+              x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
+              stroke={cfg.color}
+              strokeWidth={cfg.width * strengthMult}
+              strokeDasharray={cfg.dash}
+              strokeOpacity="0.7"
+              style={{ cursor:'pointer' }}
+              onClick={() => onAspectClick?.(asp)}
+              onMouseEnter={e => { e.target.style.strokeOpacity='1'; e.target.style.strokeWidth = cfg.width*strengthMult*1.5; }}
+              onMouseLeave={e => { e.target.style.strokeOpacity='0.7'; e.target.style.strokeWidth = cfg.width*strengthMult; }}
+            />
+          );
+        })}
+
+        {/* ── 6. Natal planet glyphs + degree labels ──────────────── */}
+        {spreadNatal.map(p => {
+          const dispAng = toAngle(p.displayLon);
+          const realAng = toAngle(p.lon);
+          const gPos = polarToXY(cx, cy, R.planets, dispAng);
+          const dPos = polarToXY(cx, cy, R.planets - size*0.065, dispAng);
+          const tickOuter = polarToXY(cx, cy, R.cuspsInner - size*0.004, realAng);
+          const tickInner = polarToXY(cx, cy, R.cuspsInner - size*0.025, realAng);
+          const color = PLANET_COLORS[p.key] || '#444444';
+          return (
+            <g key={p.key}>
+              {/* Tick from cusp ring to real position */}
+              <line x1={tickOuter.x} y1={tickOuter.y} x2={tickInner.x} y2={tickInner.y}
+                stroke={color} strokeWidth="1"/>
+              {/* Connector from real position to displayed glyph */}
+              {Math.abs(p.displayLon - p.lon) > 1 && (() => {
+                const realPos = polarToXY(cx, cy, R.planets + size*0.028, realAng);
+                const dispConnector = polarToXY(cx, cy, R.planets + size*0.012, dispAng);
+                return <line x1={realPos.x} y1={realPos.y} x2={dispConnector.x} y2={dispConnector.y}
+                  stroke={color} strokeWidth="0.5" strokeOpacity="0.5" strokeDasharray="2,2"/>;
+              })()}
+              {/* Glyph */}
+              <text x={gPos.x} y={gPos.y}
+                textAnchor="middle" dominantBaseline="central"
+                fontSize={size * 0.040} fill={color}
+                style={{ userSelect:'none', fontWeight:'600' }}
+              >
+                {PLANET_GLYPHS[p.key]}
+              </text>
+              {/* Retrograde marker */}
+              {p.retrograde && (
+                <text x={gPos.x + size*0.020} y={gPos.y - size*0.022}
+                  textAnchor="middle" dominantBaseline="central"
+                  fontSize={size * 0.020} fill={color} fontStyle="italic"
+                  style={{ userSelect:'none' }}
+                >R</text>
+              )}
+              {/* Degree + minute label */}
+              <text x={dPos.x} y={dPos.y}
+                textAnchor="middle" dominantBaseline="central"
+                fontSize={size * 0.022} fill="#666666"
+                style={{ userSelect:'none' }}
+              >
+                {p.deg}°{String(p.min).padStart(2,'0')}′
+              </text>
+            </g>
+          );
+        })}
+
+        {/* ── 7. Transit ring (bi-wheel) ───────────────────────────── */}
+        {transits && (
+          <>
+            <circle cx={cx} cy={cy} r={R.cuspsOuter * 1.05} fill="none" stroke="#aaccff" strokeWidth="1" strokeDasharray="4,3"/>
+            {spreadTransit.map(p => {
+              const dispAng = toAngle(p.displayLon);
+              const color = PLANET_COLORS[p.key] || '#4488cc';
+              const gPos = polarToXY(cx, cy, R.signInner - size*0.050, dispAng);
+              return (
+                <g key={`t-${p.key}`}>
+                  <text x={gPos.x} y={gPos.y}
+                    textAnchor="middle" dominantBaseline="central"
+                    fontSize={size * 0.036} fill={color} opacity="0.85"
+                    style={{ userSelect:'none' }}
+                  >
+                    {PLANET_GLYPHS[p.key]}
+                  </text>
+                  {p.retrograde && (
+                    <text x={gPos.x + size*0.018} y={gPos.y - size*0.020}
+                      fontSize={size*0.018} fill={color} fontStyle="italic"
+                      style={{ userSelect:'none' }}
+                    >R</text>
+                  )}
+                </g>
+              );
+            })}
+          </>
+        )}
+
+        {/* ── 8. Center circle ────────────────────────────────────── */}
+        <circle cx={cx} cy={cy} r={R.center} fill="#ffffff" stroke="#e0e0e0" strokeWidth="0.8"/>
+
+      </svg>
+
+      {/* Download button */}
+      <button
         onClick={handleDownload}
-        title="Download high-resolution chart"
+        title="Download chart as PNG"
         style={{
-          position: 'absolute',
-          bottom: 12,
-          right: 12,
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border)',
-          borderRadius: '50%',
-          width: '32px',
-          height: '32px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          cursor: 'pointer',
-          color: 'var(--text-secondary)',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-          zIndex: 10,
-          transition: 'all 0.2s'
+          position:'absolute', bottom:10, right:10,
+          background:'rgba(255,255,255,0.9)', border:'1px solid #ddd',
+          borderRadius:'50%', width:30, height:30,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          cursor:'pointer', color:'#666', boxShadow:'0 2px 8px rgba(0,0,0,0.1)',
+          fontSize:'14px', zIndex:10,
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--accent)'; e.currentTarget.style.transform = 'scale(1.1)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--text-secondary)'; e.currentTarget.style.transform = 'scale(1)'; }}
       >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-          <polyline points="7 10 12 15 17 10"></polyline>
-          <line x1="12" y1="15" x2="12" y2="3"></line>
-        </svg>
+        ↓
       </button>
     </div>
   );
 }
- 
+
 // ─── Convenience wrappers ─────────────────────────────────────────────────────
- 
-/** Natal-only chart */
+
 export function NatalWheel({ natal, aspects, onAspectClick, onHouseClick, size = 480 }) {
-  return <AstroChartWheel natal={natal} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="natal" />;
+  return <AstroChartWheel natal={natal} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="natal"/>;
 }
- 
-/** Bi-wheel: natal inside, transits outside */
+
 export function TransitWheel({ natal, transits, aspects, onAspectClick, onHouseClick, size = 480 }) {
-  return <AstroChartWheel natal={natal} transits={transits} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="transit" />;
+  return <AstroChartWheel natal={natal} transits={transits} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="transit"/>;
 }
- 
-/** Bi-wheel: person A inside, person B outside */
+
 export function SynastryWheel({ personA, personB, aspects, onAspectClick, onHouseClick, size = 480 }) {
-  return <AstroChartWheel natal={personA} transits={personB} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="synastry" />;
+  return <AstroChartWheel natal={personA} transits={personB} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="synastry"/>;
 }

@@ -108,6 +108,12 @@ export default function NavBar() {
             to={isDisabled ? '#' : tab.path}
             className={`nav-link ${tab.active ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}
             onClick={(e) => {
+              if (!currentUser) {
+                e.preventDefault();
+                toast('Please log in to access this feature.');
+                loginWithGoogle();
+                return;
+              }
               if (isDisabled) {
                 e.preventDefault();
                 toast('Set up your natal chart on the Transits page first.');

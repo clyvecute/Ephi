@@ -28,7 +28,7 @@ export default function ReturnsPage() {
     } catch {}
   }, []);
 
-  const calculateReturn = () => {
+  const calculateReturn = async () => {
     if (!natal?.positions?.sun) {
       setError('Please configure your natal chart first.');
       return;
@@ -43,14 +43,14 @@ export default function ReturnsPage() {
 
       if (mode === 'solar') {
         const sunLon = natal.positions.sun.longitude ?? natal.positions.sun;
-        result = findSolarReturn(sunLon, parseInt(year), natal.meta.lat, natal.meta.lon, isSidereal);
+        result = await findSolarReturn(sunLon, parseInt(year), natal.meta.lat, natal.meta.lon, isSidereal);
       } else if (mode === 'lunar') {
         const moonLon = natal.positions.moon.longitude ?? natal.positions.moon;
-        result = findLunarReturn(moonLon, new Date(), isSidereal);
+        result = await findLunarReturn(moonLon, new Date(), isSidereal);
       } else if (mode === 'progressed') {
         const birthDate = new Date(natal.meta.date + ' ' + natal.meta.time);
         const natalAsc = natal.ascendant?.longitude ?? null;
-        result = getSecondaryProgressions(birthDate, new Date(), natalAsc, isSidereal);
+        result = await getSecondaryProgressions(birthDate, new Date(), natalAsc, isSidereal);
         result.type = 'Secondary Progression';
       }
       setReturnChart(result);

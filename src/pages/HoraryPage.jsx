@@ -9,6 +9,7 @@ import EphiMarkdown from '../components/EphiMarkdown';
 export default function HoraryPage() {
   const [question, setQuestion] = useState('');
   const [city, setCity] = useState('');
+  const [exactCoords, setExactCoords] = useState(null);
   const [loading, setLoading] = useState(false);
   const [chart, setChart] = useState(null);
   const [judgment, setJudgment] = useState(null);
@@ -63,6 +64,7 @@ export default function HoraryPage() {
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
+          setExactCoords({ lat: latitude, lng: longitude });
           const cityName = await reverseGeocode(latitude, longitude);
           setCity(cityName);
         } catch (err) {
@@ -96,7 +98,10 @@ export default function HoraryPage() {
       let lat = 0;
       let lng = 0;
 
-      if (city.trim()) {
+      if (exactCoords && city.trim()) {
+        lat = exactCoords.lat;
+        lng = exactCoords.lng;
+      } else if (city.trim()) {
         const coords = await geocodeCity(city);
         lat = coords.lat;
         lng = coords.lng;
@@ -110,7 +115,7 @@ export default function HoraryPage() {
         } catch {}
       }
 
-      const castedChart = castHoraryChart(question, new Date(), lat, lng);
+      const castedChart = await castHoraryChart(question, new Date(), lat, lng);
       const horaryJudgment = judgeChart(castedChart);
       
       const s = getHoraryStrictures(
@@ -268,7 +273,10 @@ export default function HoraryPage() {
                 className="form-input"
                 type="text"
                 value={city}
-                onChange={(e) => setCity(e.target.value)}
+                onChange={(e) => {
+                  setCity(e.target.value);
+                  setExactCoords(null);
+                }}
                 placeholder="e.g., Manila"
                 disabled={loading}
                 style={{ paddingRight: '3rem' }}

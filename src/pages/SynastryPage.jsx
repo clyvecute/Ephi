@@ -11,7 +11,7 @@ import { isOracleConfigured as isGeminiConfigured, generateSynastryReading } fro
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import EphiDatePicker from '../components/EphiDatePicker.jsx';
 import EphiTimePicker from '../components/EphiTimePicker.jsx';
-import { generateNatalChart } from '../lib/natal.js';
+import { generatePrecisionNatalChart } from '../lib/natal.js';
 import EphiMarkdown from '../components/EphiMarkdown';
 import NatalForm from '../components/NatalForm.jsx';
 import SynastryGrid from '../components/SynastryGrid.jsx';
@@ -68,6 +68,7 @@ function ScoreRing({ harmony, grade }) {
 }
 
 function AspectCard({ aspect, expanded, onToggle }) {
+  if (!aspect?.p1 || !aspect?.p2) return null;
   const nc = NATURE_COLOR[aspect.nature] || 'var(--neutral)';
   return (
     <div
@@ -77,18 +78,18 @@ function AspectCard({ aspect, expanded, onToggle }) {
     >
       <div className="synastry-aspect-top">
         <div className="synastry-aspect-glyphs">
-          <PlanetIcon name={aspect.p1.toLowerCase()} size={20} />
+          <PlanetIcon name={(aspect.p1 || '').toLowerCase()} size={20} />
           <span style={{ color: nc, fontSize: '0.9rem', display: 'flex', alignItems: 'center' }}>
              <UiIcon name="sparkle" size={12} />
           </span>
-          <PlanetIcon name={aspect.p2.toLowerCase()} size={20} />
+          <PlanetIcon name={(aspect.p2 || '').toLowerCase()} size={20} />
         </div>
         <div className="synastry-aspect-mid">
           <div className="synastry-aspect-title">
-            <span style={{ fontWeight: 700 }}>{aspect.metaFrom.label}</span>
+            <span style={{ fontWeight: 700 }}>{aspect.metaFrom?.label}</span>
             <span className="synastry-aspect-dir"> ({aspect.labelFrom})</span>
             {' '}{aspect.aspectName}{' '}
-            <span style={{ fontWeight: 700 }}>{aspect.metaTo.label}</span>
+            <span style={{ fontWeight: 700 }}>{aspect.metaTo?.label}</span>
             <span className="synastry-aspect-dir"> ({aspect.labelTo})</span>
           </div>
           <div className="synastry-aspect-sub">
@@ -96,7 +97,7 @@ function AspectCard({ aspect, expanded, onToggle }) {
           </div>
         </div>
         <div className="synastry-aspect-right">
-          <div className="synastry-orb-val">{aspect.orb.toFixed(1)}°</div>
+          <div className="synastry-orb-val">{aspect.orb?.toFixed(1) || '0.0'}°</div>
           <div className="synastry-nature-badge" style={{ color: nc }}>{aspect.nature}</div>
         </div>
       </div>
@@ -115,19 +116,20 @@ function AspectCard({ aspect, expanded, onToggle }) {
 }
 
 function KeyConnectionCard({ aspect }) {
+  if (!aspect?.p1 || !aspect?.p2) return null;
   const nc = NATURE_COLOR[aspect.nature] || 'var(--neutral)';
   return (
     <div className="synastry-key-card" style={{ borderColor: nc + '44' }}>
       <div className="synastry-key-header">
         <div className="synastry-key-icons">
-          <PlanetIcon name={aspect.p1.toLowerCase()} size={18} />
+          <PlanetIcon name={(aspect.p1 || '').toLowerCase()} size={18} />
           <UiIcon name="sparkle" size={10} color={nc} />
-          <PlanetIcon name={aspect.p2.toLowerCase()} size={18} />
+          <PlanetIcon name={(aspect.p2 || '').toLowerCase()} size={18} />
         </div>
         <span className="synastry-key-title">
-          {aspect.metaFrom.label} {aspect.aspectName} {aspect.metaTo.label}
+          {aspect.metaFrom?.label} {aspect.aspectName} {aspect.metaTo?.label}
         </span>
-        <span className="synastry-key-orb">{aspect.orb.toFixed(1)}°</span>
+        <span className="synastry-key-orb">{aspect.orb?.toFixed(1) || '0.0'}°</span>
       </div>
       <p className="synastry-key-core">{aspect.core}</p>
     </div>
@@ -173,7 +175,7 @@ export default function SynastryPage() {
     setGeminiText('');
 
     try {
-      const natal = generateNatalChart(form);
+      const natal = await generatePrecisionNatalChart(form);
       const bName = form.name?.trim() || 'Them';
 
       setNatalB(natal);

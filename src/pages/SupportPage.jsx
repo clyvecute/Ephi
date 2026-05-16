@@ -51,16 +51,15 @@ export default function SupportPage() {
 
   return (
     <div className="page-wrap">
-      </div>
       
       {/* Divine Credit Bundles */}
       <div style={{ maxWidth: '900px', margin: '0 auto 3rem' }}>
         <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', textAlign: 'center', marginBottom: '2rem' }}>✦ Divine Credits ✦</h2>
         <div className="responsive-grid-3">
           {[
-            { id: 'tier_1', amount: 10,  price: '₱150', name: 'Neophyte', desc: '10 High-Precision Readings' },
-            { id: 'tier_2', amount: 50,  price: '₱500', name: 'Adept', desc: '50 Readings + Priority Support' },
-            { id: 'tier_3', amount: 200, price: '₱1500', name: 'Master', desc: 'Unlimited Depth Archive' }
+            { id: 'tier_1', amount: 10,  price: '$3',    name: 'Neophyte', desc: '10 High-Precision Readings' },
+            { id: 'tier_2', amount: 50,  price: '$10',   name: 'Adept', desc: '50 Readings + Priority Support' },
+            { id: 'tier_3', amount: 200, price: '$30',   name: 'Master', desc: 'Unlimited Depth Archive' }
           ].map(bundle => (
             <div key={bundle.id} className="ephi-card" style={{ 
               padding: '2rem', 
@@ -104,7 +103,7 @@ export default function SupportPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <UiIcon name={m.icon} size={20} color={activeMethod === m.id ? 'var(--accent)' : 'var(--text-muted)'} />
                 <div>
-                  <h3 style={{ fontSize: '1.1rem', margin: 0, color: activeMethod === m.id ? 'var(--accent)' : '#fff' }}>{m.name}</h3>
+                  <h3 style={{ fontSize: '1.1rem', margin: 0, color: activeMethod === m.id ? 'var(--accent)' : 'var(--text-primary)' }}>{m.name}</h3>
                   <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0' }}>{m.desc}</p>
                 </div>
               </div>
@@ -142,14 +141,15 @@ export default function SupportPage() {
               
               {methods.find(m => m.id === activeMethod).details && (
                 <div style={{ 
-                  background: 'rgba(0,0,0,0.3)', 
+                  background: 'var(--bg-deep)', 
                   padding: '1.5rem', 
                   borderRadius: 'var(--radius-md)', 
                   border: '1px solid var(--border)',
                   marginBottom: '2rem',
                   fontFamily: 'monospace',
                   whiteSpace: 'pre-wrap',
-                  fontSize: '0.9rem'
+                  fontSize: '0.9rem',
+                  color: 'var(--text-primary)'
                 }}>
                   {methods.find(m => m.id === activeMethod).details}
                 </div>

@@ -6,6 +6,8 @@ import { useToast } from '../components/Toast';
 import { isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/firebase';
+import { collection, query, orderBy, limit, getDocs, doc, updateDoc } from 'firebase/firestore';
 
 export default function GrimoirePage() {
   const { currentUser, loginWithGoogle } = useAuth();
@@ -19,6 +21,30 @@ export default function GrimoirePage() {
     };
     loadData();
   }, []);
+
+  const isAdmin = currentUser && currentUser.uid === import.meta.env.VITE_ADMIN_UID;
+  const [feedback, setFeedback] = useState([]);
+  const [analytics, setAnalytics] = useState([]);
+  const [loadingAdmin, setLoadingAdmin] = useState(false);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const fetchData = async () => {
+      setLoadingAdmin(true);
+      try {
+        const feedbackSnap = await getDocs(query(collection(db, 'feedback'), orderBy('timestamp', 'desc'), limit(50)));
+        setFeedback(feedbackSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        
+        const analyticsSnap = await getDocs(query(collection(db, 'analytics'), orderBy('timestamp', 'desc'), limit(50)));
+        setAnalytics(analyticsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      } catch (err) {
+        console.error('Failed to fetch admin data:', err);
+      } finally {
+        setLoadingAdmin(false);
+      }
+    };
+    fetchData();
+  }, [isAdmin]);
   const [manualUri, setManualUri] = useState('');
   const [selectedTool, setSelectedTool] = useState('global');
   const [importStatus, setImportStatus] = useState('');
@@ -174,8 +200,6 @@ export default function GrimoirePage() {
     localStorage.setItem('ephi_persona', p);
     
     if (currentUser) {
-      const { db } = await import('../lib/firebase');
-      const { doc, updateDoc } = await import('firebase/firestore');
       const userRef = doc(db, 'users', currentUser.uid);
       await updateDoc(userRef, { 'settings.persona': p }).catch(console.error);
     }
@@ -198,14 +222,6 @@ export default function GrimoirePage() {
         <p className="page-subtitle" style={{ opacity: 0.7, maxWidth: '600px', margin: '0 auto' }}>
           Manage your private reference materials. Uploaded documents serve as the authoritative logic for AI interpretations.
         </p>
-        {currentUser?.uid === import.meta.env.VITE_ADMIN_UID && (
-          <div style={{ marginTop: '2rem' }}>
-            <a href="/admin" className="btn btn-ghost" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              <UiIcon name="gear" size={14} style={{ marginRight: 8 }} />
-              Open Admin Dashboard
-            </a>
-          </div>
-        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
@@ -547,6 +563,89 @@ export default function GrimoirePage() {
 
         </div>
       </div>
+
+      {/* ── ADMIN / SYS-ARCHIVE SECTION ── */}
+      {isAdmin && (
+        <div style={{ marginTop: '4rem', paddingTop: '4rem', borderTop: '1px solid var(--border)' }}>
+          <div className="page-header" style={{ marginBottom: '3rem', textAlign: 'left' }}>
+            <span className="section-label" style={{ textAlign: 'left' }}>Operational</span>
+            <h2 style={{ fontSize: '2.5rem', fontFamily: 'var(--font-serif)', marginBottom: '0.5rem' }}>System Analytics</h2>
+            <p style={{ opacity: 0.7, maxWidth: '600px' }}>Global feedback and telemetry oversight.</p>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+            <section>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <UiIcon name="sparkle" size={20} color="var(--accent)" />
+                <h3 style={{ margin: 0, fontSize: '1.5rem', fontFamily: 'var(--font-serif)' }}>User Feedback</h3>
+              </div>
+              <div className="ephi-card" style={{ padding: 0, overflow: 'hidden' }}>
+                {loadingAdmin ? (
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>Loading feedback...</div>
+                ) : feedback.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No feedback received yet.</div>
+                ) : (
+                  <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    <table className="data-table">
+                      <thead style={{ background: 'var(--bg-deep)', position: 'sticky', top: 0 }}>
+                        <tr>
+                          <th>User</th>
+                          <th>Content</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feedback.map(f => (
+                          <tr key={f.id}>
+                            <td style={{ color: 'var(--text-secondary)' }}>{f.userEmail}</td>
+                            <td>{f.content}</td>
+                            <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{f.timestamp?.toDate().toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <section>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <UiIcon name="star" size={20} color="var(--neutral)" />
+                <h3 style={{ margin: 0, fontSize: '1.5rem', fontFamily: 'var(--font-serif)' }}>Recent Events</h3>
+              </div>
+              <div className="ephi-card" style={{ padding: 0, overflow: 'hidden' }}>
+                {loadingAdmin ? (
+                  <div style={{ padding: '2rem', textAlign: 'center' }}>Loading events...</div>
+                ) : analytics.length === 0 ? (
+                  <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>No events logged yet.</div>
+                ) : (
+                  <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                    <table className="data-table">
+                      <thead style={{ background: 'var(--bg-deep)', position: 'sticky', top: 0 }}>
+                        <tr>
+                          <th>Event</th>
+                          <th>Path</th>
+                          <th>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {analytics.map(a => (
+                          <tr key={a.id}>
+                            <td style={{ fontWeight: 700, color: 'var(--accent)' }}>{a.event}</td>
+                            <td style={{ color: 'var(--text-secondary)' }}>{a.url}</td>
+                            <td style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{a.timestamp?.toDate().toLocaleString()}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </section>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { UiIcon } from '../components/EphiIcons';
 import VedicChart from '../components/VedicChart';
 import { getPlanetPositions, PLANET_META, ALL_PLANETS, getZodiacInfo } from '../lib/ephemeris';
-import { birthDataToDate, approximateAscendant, loadNatalChart } from '../lib/natal';
+import { birthDataToDate, loadNatalChart } from '../lib/natal';
+import { getPrecisionHouses } from '../lib/swe';
 import { getNakshatra, getNavamsaSign, getVimshottariDasha } from '../lib/vedic';
 import { DASHA_MEANINGS, NAKSHATRA_MEANINGS } from '../lib/vedicInterpretations';
 import { generateVedicReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
@@ -29,7 +30,7 @@ export default function VedicPage() {
     calculateVedic();
   }, []);
 
-  const calculateVedic = () => {
+  const calculateVedic = async () => {
     try {
       const natal = loadNatalChart();
       if (!natal || !natal.meta) {
@@ -40,12 +41,12 @@ export default function VedicPage() {
 
       const birthDate = birthDataToDate(natal.meta);
       
-      // Calculate Ascendant in Sidereal
-      const ascData = approximateAscendant(birthDate, natal.meta.lat, natal.meta.lon, { sidereal: true });
-      const ascLon = ascData.asc.longitude;
+      // Calculate Ascendant in Sidereal (Lahiri)
+      const houses = await getPrecisionHouses(birthDate, natal.meta.lat, natal.meta.lon, 'P', { sidereal: true });
+      const ascLon = houses.ascendant;
 
       // Get Sidereal Planet Positions
-      const rawPositions = getPlanetPositions(birthDate, ascLon, { 
+      const rawPositions = await getPlanetPositions(birthDate, ascLon, { 
         sidereal: true, 
         lat: natal.meta.lat, 
         lon: natal.meta.lon 
@@ -83,7 +84,7 @@ export default function VedicPage() {
         if (rawPositions[key] === undefined) return;
         
         const lon = rawPositions[key];
-        const meta = PLANET_META[key] || { label: key, color: '#fff' };
+        const meta = PLANET_META[key] || { label: key, color: 'var(--text-primary)' };
         
         // D-1 (Rasi) calculation
         const d1SignIdx = Math.floor(lon / 30);

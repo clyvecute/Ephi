@@ -4,8 +4,8 @@
  * Testable: node lib/natal.js
  */
 
-import { getPlanetPositions, getZodiacInfo } from './ephemeris.js';
-import { zodiacSign, SIGNS } from './astronomy.js';
+import { getZodiacInfo } from './ephemeris.js';
+import { SIGNS } from './astronomy.js';
 
 // ─── Storage key ──────────────────────────────────────────────────────────────
 
@@ -39,69 +39,22 @@ export function validateBirthData(data) {
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 
+import { DateTime } from 'luxon';
+
 export function birthDataToDate(data) {
   if (!data.date || !data.time) return new Date();
-
-  const [year, month, day] = data.date.split('-').map(Number);
-  const [hour, minute] = data.time.split(':').map(Number);
   
-  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) {
-    return new Date();
-  }
-
-  // Use the explicit UTC offset provided by the user
-  const offset = parseFloat(data.utcOffset);
-  const safeOffset = isNaN(offset) ? 0 : offset;
+  // Use Luxon to parse the date/time in the context of the user's IANA timezone string
+  const zone = data.timezone || 'UTC';
+  const dt = DateTime.fromISO(`${data.date}T${data.time}`, { zone });
   
-  const totalMinutes = hour * 60 + minute - Math.round(safeOffset * 60);
-  const d = new Date(Date.UTC(year, month - 1, day, 0, totalMinutes));
-  
-  return isNaN(d.getTime()) ? new Date() : d;
+  if (!dt.isValid) return new Date();
+  return dt.toJSDate();
 }
 
 // ─── Chart generation ─────────────────────────────────────────────────────────
 
-/**
- * Generate a natal chart from birth data.
- * @param {BirthData} data
- * @param {Object} options - { sidereal: boolean }
- * @returns {Object} natal chart with planet positions + metadata
- */
-export function generateNatalChart(data, options = {}) {
-  const errors = validateBirthData(data);
-  if (errors.length) throw new Error(errors.join(' '));
-
-  const birthDate = birthDataToDate(data);
-  // Ascendant (approximate — full accuracy needs sidereal time + lat)
-  const asc = approximateAscendant(birthDate, data.lat, data.lon, options);
-  const positions = getPlanetPositions(birthDate, asc.asc.longitude, { 
-    ...options, 
-    lat: data.lat, 
-    lon: data.lon 
-  });
-
-  return {
-    meta: {
-      name: data.name,
-      date: data.date,
-      time: data.time,
-      utcOffset: data.utcOffset,
-      city: data.city || '',
-      lat: data.lat,
-      lon: data.lon,
-      sidereal: !!options.sidereal,
-      generated: new Date().toISOString(),
-    },
-    positions,
-    ascendant: asc.asc,
-    mc: asc.mc,
-    ic: asc.ic,
-    dc: asc.dc,
-    sunSign: getZodiacInfo(positions.sun).sign,
-    moonSign: getZodiacInfo(positions.moon).sign,
-    risingSign: asc.asc.sign,
-  };
-}
+// generateNatalChart removed — use generatePrecisionNatalChart for all calculations.
 
 /**
  * HIGH PRECISION VERSION (WASM-based)
@@ -150,41 +103,7 @@ export async function generatePrecisionNatalChart(data, options = {}) {
   };
 }
 
-// ─── Ascendant (simplified) ───────────────────────────────────────────────────
-
-import { julianCenturies, dateToJD, gmst, toRad, toDeg, norm360, meanObliquity, zodiacSign as zs } from './astronomy.js';
-import { getAyanamsa } from './ephemeris.js';
-
-export function approximateAscendant(date, lat, lon, options = {}) {
-  const jd  = dateToJD(date);
-  const T   = julianCenturies(jd);
-  const LST = norm360(gmst(jd) + lon);
-  const eps = meanObliquity(T);
-
-  const ayanamsa = options.sidereal ? getAyanamsa(date) : 0;
-
-  const lstRad = toRad(LST);
-  const latRad = toRad(lat);
-  const epsRad = toRad(eps);
-
-  const y = Math.cos(lstRad);
-  const x = -(Math.sin(lstRad) * Math.cos(epsRad) + Math.tan(latRad) * Math.sin(epsRad));
-  const ascLon = norm360(toDeg(Math.atan2(y, x)));
-
-  // MC calculation
-  const mcLon = norm360(toDeg(Math.atan2(Math.sin(lstRad), Math.cos(lstRad) * Math.cos(epsRad))) - ayanamsa);
-  const ascLonFinal = norm360(ascLon - ayanamsa);
-
-  const icLon = norm360(mcLon + 180);
-  const dcLon = norm360(ascLonFinal + 180);
-
-  return {
-    asc: { longitude: ascLonFinal, ...zs(ascLonFinal) },
-    mc:  { longitude: mcLon,  ...zs(mcLon)  },
-    ic:  { longitude: icLon,  ...zs(icLon)  },
-    dc:  { longitude: dcLon,  ...zs(dcLon)  },
-  };
-}
+// approximateAscendant removed — use getPrecisionHouses for professional accuracy.
 
 // ─── Persistence (browser) ────────────────────────────────────────────────────
 
@@ -239,16 +158,7 @@ if (typeof process !== 'undefined' && process.argv[1]?.endsWith('natal.js')) {
   if (errors.length) {
     console.error('Validation errors:', errors);
   } else {
-    const chart = generateNatalChart(testData);
-    console.log(`\nNatal chart for ${chart.meta.name}`);
-    console.log(`Sun: ${chart.positions.Sun.zodiac.label}`);
-    console.log(`Moon: ${chart.positions.Moon.zodiac.label}`);
-    console.log(`Rising: ${chart.risingSign}`);
-    console.log(`Ascendant: ${chart.ascendant.label}`);
-    console.log('\nAll positions:');
-    for (const [name, p] of Object.entries(chart.positions)) {
-      const rx = p.retrograde ? ' Rx' : '';
-      console.log(`  ${p.symbol} ${name.padEnd(10)}${rx}  ${p.zodiac.label}`);
-    }
+    // Self-test now requires precision module
+    console.log('\n(Precision self-test skipped in Node environment without WASM support)');
   }
 }

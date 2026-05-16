@@ -48,7 +48,7 @@ export default function AboutPage() {
         </div>
 
         <div className="ephi-card" style={{ marginTop: '3rem', padding: '3rem', textAlign: 'center' }}>
-          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: '#fff', marginBottom: '1rem' }}>Support the Journey</h2>
+          <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.8rem', color: 'var(--text-primary)', marginBottom: '1rem' }}>Support the Journey</h2>
           <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
             Ephi is an independent project. Your support keeps the servers running and the oracle evolving.
           </p>

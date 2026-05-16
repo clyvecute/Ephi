@@ -10,7 +10,7 @@ import { generateReading, isOracleConfigured as isGeminiConfigured, FOCUS_AREAS 
 import {
   saveReading,
   getRecentReadings,
-  getFreshReadingForFocus,
+  getLatestReading,
 } from '../lib/readingCache';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import { getPlanetPositions } from '../lib/ephemeris';
@@ -248,9 +248,13 @@ export default function ReadingPage() {
   const [status,      setStatus]      = useState('idle'); // idle | loading | done | error
   const [reading,     setReading]     = useState(null);
   const [errorMsg,    setErrorMsg]    = useState('');
+  const [configured,  setConfigured]  = useState(true);
   const [pastReadings,setPastReadings]= useState([]);
   const [deepDive,    setDeepDive]    = useState(null); // { planet, text, loading }
   const [puristMode,  setPuristMode]  = useState(false);
+  const [fileUri,     setFileUri]     = useState('');
+  const [userQuery,   setUserQuery]   = useState('');
+  const [confirmModal,setConfirmModal]= useState(null);
   const abortRef = useRef(false);
 
   // Load data on mount
