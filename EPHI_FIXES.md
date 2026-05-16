@@ -1,3 +1,52 @@
+# Ephi – Pattern Detection & Chart Wheel Fixes
+> Safe to read — this file will NOT overwrite anything in your repo.
+> Copy-paste only the sections you want into your actual files.
+
+---
+
+## What Was Fixed
+
+### 1. `src/lib/patterns.js` — Grand Cross (and all patterns) were broken
+
+**Root cause:** You called `getActiveAspects(positions, positions)` to get natal aspects.
+That function skips pairs where `i >= j` (a transit dedup guard). So you got
+`sun → moon` but NOT `moon → sun`. The Grand Cross checker needs both directions
+in the lookup — so it always failed silently.
+
+**Fix:** `patterns.js` now builds its own `buildNatalAspects()` with a symmetric
+`has(type, p1, p2)` lookup. Every pair is stored bidirectionally.
+
+**Other improvements:**
+- Grand Cross now requires all 4 squares (removed the `>= 3` lenient fallback that caused false positives)
+- Mystic Rectangle geometry fixed — sides must properly alternate trine/sextile around the rectangle
+- Grand Trine now detects and labels element (fire/earth/air/water)
+- Grand Cross and T-Square now detect and label modality (cardinal/fixed/mutable)
+- Added: **Boomerang Yod**, **Thor's Hammer / Fist of God**
+
+### 2. `src/components/AstroChartWheel.jsx` — Aspect line hover bug
+
+The `onMouseEnter` handler was on the `<line>` element but called
+`e.currentTarget.querySelector('line')` — which looks inside a `<line>` element
+for a child `<line>` (impossible). Fixed by wrapping in a `<g>` and handling
+events at the group level.
+
+**Also added:** Small dot markers at each aspect line endpoint on the aspect ring,
+so the line origin is visually clear even when a planet glyph has been spread
+away from its real ecliptic position.
+
+---
+
+## How to Apply
+
+1. Replace `src/lib/patterns.js` entirely with the code in the section below.
+2. In `src/components/AstroChartWheel.jsx`, replace only the aspect lines block
+   (section 5 in the SVG) with the snippet provided.
+
+---
+
+## FILE 1 — Full replacement: `src/lib/patterns.js`
+
+```js
 /**
  * lib/patterns.js
  *
@@ -378,3 +427,69 @@ function sharedModality(positions, planets) {
   const mods = [...new Set(planets.map(p => SIGN_MODALITY[signIdx(positions, p)]))];
   return mods.length === 1 ? mods[0] : null;
 }
+```
+
+---
+
+## FILE 2 — Patch only: `src/components/AstroChartWheel.jsx`
+
+Find and replace the aspect lines block (search for `── 5. Aspect lines`).
+Replace the entire block from the comment down to the closing `})}` with this:
+
+```jsx
+        {/* ── 5. Aspect lines (inner circle) ──────────────────────── */}
+        {/* Lines always use p.lon (real ecliptic position), not displayLon.   */}
+        {/* This keeps aspect geometry astronomically correct even when glyphs  */}
+        {/* are visually spread to avoid overlap.                               */}
+        <circle cx={cx} cy={cy} r={R.aspectRing} fill="#fafafa" stroke="#e8e8e8" strokeWidth="0.5"/>
+        {aspects.map((asp, idx) => {
+          const p1key = (asp.transitPlanet || asp.planet1 || '').toLowerCase();
+          const p2key = (asp.natalPlanet  || asp.planet2 || '').toLowerCase();
+          const p1 = planets.find(p => p.key === p1key);
+          const p2 = planets.find(p => p.key === p2key);
+          if (!p1 || !p2) return null;
+          const cfg = ASPECT_CONFIG[asp.aspectName] || ASPECT_CONFIG.sextile;
+          const strengthMult = asp.strength === 'exact' ? 2.5 : asp.strength === 'strong' ? 1.8 : 1.0;
+          // Always use real lon for geometrically correct aspect lines
+          const a1  = toAngle(p1.lon);
+          const a2  = toAngle(p2.lon);
+          const pt1 = polarToXY(cx, cy, R.aspectRing, a1);
+          const pt2 = polarToXY(cx, cy, R.aspectRing, a2);
+          return (
+            <g key={idx} style={{ cursor:'pointer' }} onClick={() => onAspectClick?.(asp)}>
+              <line
+                x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
+                stroke={cfg.color}
+                strokeWidth={cfg.width * strengthMult}
+                strokeDasharray={cfg.dash}
+                strokeOpacity="0.7"
+              />
+              {/* Small dot at each endpoint so origin is clear even when glyph is spread */}
+              <circle cx={pt1.x} cy={pt1.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
+              <circle cx={pt2.x} cy={pt2.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
+            </g>
+          );
+        })}
+```
+
+---
+
+## Quick Sanity Test
+
+Paste this into your browser console (or a test file) to verify Grand Cross detection works:
+
+```js
+import { detectPatterns } from './src/lib/patterns.js';
+
+// Classic fixed Grand Cross: planets ~90° apart
+const testChart = {
+  sun:     0,    // 0° Aries
+  moon:    90,   // 0° Cancer
+  mercury: 180,  // 0° Libra
+  venus:   270,  // 0° Capricorn
+};
+
+const patterns = detectPatterns(testChart);
+console.log(patterns);
+// Expected: [{ type: 'Grand Cross', planets: [...], modality: 'cardinal' }]
+```

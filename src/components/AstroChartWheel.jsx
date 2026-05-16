@@ -323,6 +323,9 @@ export default function AstroChartWheel({
         })}
 
         {/* ── 5. Aspect lines (inner circle) ──────────────────────── */}
+        {/* Lines always use p.lon (real ecliptic position), not displayLon.   */}
+        {/* This keeps aspect geometry astronomically correct even when glyphs  */}
+        {/* are visually spread to avoid overlap.                               */}
         <circle cx={cx} cy={cy} r={R.aspectRing} fill="#fafafa" stroke="#e8e8e8" strokeWidth="0.5"/>
         {aspects.map((asp, idx) => {
           const p1key = (asp.transitPlanet || asp.planet1 || '').toLowerCase();
@@ -332,22 +335,24 @@ export default function AstroChartWheel({
           if (!p1 || !p2) return null;
           const cfg = ASPECT_CONFIG[asp.aspectName] || ASPECT_CONFIG.sextile;
           const strengthMult = asp.strength === 'exact' ? 2.5 : asp.strength === 'strong' ? 1.8 : 1.0;
-          const a1 = toAngle(p1.lon);
-          const a2 = toAngle(p2.lon);
+          // Always use real lon for geometrically correct aspect lines
+          const a1  = toAngle(p1.lon);
+          const a2  = toAngle(p2.lon);
           const pt1 = polarToXY(cx, cy, R.aspectRing, a1);
           const pt2 = polarToXY(cx, cy, R.aspectRing, a2);
           return (
-            <line key={idx}
-              x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
-              stroke={cfg.color}
-              strokeWidth={cfg.width * strengthMult}
-              strokeDasharray={cfg.dash}
-              strokeOpacity="0.7"
-              style={{ cursor:'pointer' }}
-              onClick={() => onAspectClick?.(asp)}
-              onMouseEnter={e => { e.target.style.strokeOpacity='1'; e.target.style.strokeWidth = cfg.width*strengthMult*1.5; }}
-              onMouseLeave={e => { e.target.style.strokeOpacity='0.7'; e.target.style.strokeWidth = cfg.width*strengthMult; }}
-            />
+            <g key={idx} style={{ cursor:'pointer' }} onClick={() => onAspectClick?.(asp)}>
+              <line
+                x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
+                stroke={cfg.color}
+                strokeWidth={cfg.width * strengthMult}
+                strokeDasharray={cfg.dash}
+                strokeOpacity="0.7"
+              />
+              {/* Small dot at each endpoint so origin is clear even when glyph is spread */}
+              <circle cx={pt1.x} cy={pt1.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
+              <circle cx={pt2.x} cy={pt2.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
+            </g>
           );
         })}
 
