@@ -26,6 +26,10 @@ export const logEvent = async (eventName, params = {}) => {
   }
 };
 
+let lastPage = null;
+
 export const logPageView = (path) => {
+  if (path === lastPage) return;
+  lastPage = path;
   logEvent('page_view', { path });
 };
