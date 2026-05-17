@@ -93,14 +93,14 @@ export function AuthProvider({ children }) {
       store.setUser(user?.uid || null);
       store.clearLegacy();
 
-      setCurrentUser(user);
-
       if (user) {
         try {
           // FIX: Force token refresh before attaching Firestore listeners.
           // Without this, onSnapshot fires before the Firestore auth token
           // is ready → permission-denied errors even though rules are correct.
           await user.getIdToken(/* forceRefresh */ true);
+
+          setCurrentUser(user);
 
           // Pull Library Data
           const libRef = doc(db, 'users', user.uid, 'data', 'library');
@@ -127,6 +127,7 @@ export function AuthProvider({ children }) {
           }));
         } catch (e) {
           console.error("Sync error:", e);
+          setCurrentUser(user);
         }
       } else {
         unsubs.forEach(unsub => unsub());
