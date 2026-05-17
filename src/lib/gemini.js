@@ -28,7 +28,7 @@ const TEMPERATURE        = 0.85; // slightly creative but grounded
 
 // ─── Zodiac / planet helpers ──────────────────────────────────────────────────
 
-const SIGN_FOR = (lon) => {
+export const SIGN_FOR = (lon) => {
   const signs = [
     'Aries','Taurus','Gemini','Cancer','Leo','Virgo',
     'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces',
@@ -36,9 +36,9 @@ const SIGN_FOR = (lon) => {
   return signs[Math.floor(((lon % 360) + 360) % 360 / 30)];
 };
 
-const DEG_IN_SIGN = (lon) => (((lon % 360) + 360) % 360 % 30).toFixed(1);
+export const DEG_IN_SIGN = (lon) => (((lon % 360) + 360) % 360 % 30).toFixed(1);
 
-const PLANET_LABEL = {
+export const PLANET_LABEL = {
   sun: 'Sun', moon: 'Moon', mercury: 'Mercury', venus: 'Venus',
   mars: 'Mars', jupiter: 'Jupiter', saturn: 'Saturn',
   uranus: 'Uranus', neptune: 'Neptune', pluto: 'Pluto',
@@ -62,7 +62,7 @@ function getOrdinal(n) {
 /**
  * Formats the natal chart into a readable paragraph for the prompt.
  */
-function formatNatal(natal) {
+export function formatNatal(natal) {
   if (!natal?.positions) return 'Natal chart not available.';
 
   const signs = [
@@ -150,7 +150,7 @@ function formatNatal(natal) {
 /**
  * Formats detected patterns for the prompt.
  */
-function formatPatterns(natal) {
+export function formatPatterns(natal) {
   if (!natal?.positions) return '';
   const patterns = detectPatterns(natal.positions);
   if (!patterns.length) return 'No major aspect patterns (like Grand Trines or Stelliums) detected.';
@@ -162,7 +162,7 @@ function formatPatterns(natal) {
  * Formats active aspects into a concise list for the prompt.
  * Only includes exact/strong/moderate aspects to avoid noise.
  */
-function formatAspects(aspects) {
+export function formatAspects(aspects) {
   if (!aspects?.length) return 'No significant transits currently active.';
 
   const notable = aspects
@@ -214,11 +214,18 @@ const FOCUS_CONTEXT = {
 /**
  * Builds the main synthesis prompt.
  */
-function buildSynthesisPrompt({ natal, natalText, aspectsText, focus, userName, userQuery, mode = 'transit' }) {
+export function buildSynthesisPrompt({ natal, natalText, aspectsText, focus, userName, userQuery, mode = 'transit' }) {
   const personaKey = getPersona();
   const personaDesc = PERSONA_CONTEXT[personaKey] || PERSONA_CONTEXT.stoic;
   const focusInstruction = FOCUS_CONTEXT[focus] || FOCUS_CONTEXT.general;
   const name = userName ? `The person's name is ${userName}.` : '';
+
+  const libraryBooks = getBookForTool(mode === 'natal' ? 'natal' : 'transit');
+  let ragPrompt = '';
+  if (libraryBooks.length > 0) {
+    const bookLabels = libraryBooks.map(b => b.name).join(', ');
+    ragPrompt = `\nCRITICAL RAG INSTRUCTION: You MUST base your interpretations, techniques, and synthesis on the specific astrological principles, house-ruling styles, and transit-forecast techniques outlined in the reference book(s): ${bookLabels}. Align your tone and technical approach with these works.`;
+  }
 
   let queryInstruction = '';
   if (userQuery) {
@@ -249,6 +256,8 @@ ${name}
 ${queryInstruction}
 
 ${previousReadingContext}
+
+${ragPrompt}
 
 NATAL CHART DATA (Whole Sign Houses & Dispositor Trees):
 ${natalText}
@@ -285,6 +294,8 @@ ${queryInstruction}
 
 ${previousReadingContext}
 
+${ragPrompt}
+
 NATAL CHART DATA (For Reference):
 ${natalText}
 
@@ -312,7 +323,7 @@ Tone: Sophisticated, editorial, deeply psychological, and empowering. Use the la
 /**
  * Builds a single-aspect deep-dive prompt.
  */
-function buildAspectPrompt({ transitPlanet, aspectName, natalPlanet, natalSign, transitSign, orb, applying }) {
+export function buildAspectPrompt({ transitPlanet, aspectName, natalPlanet, natalSign, transitSign, orb, applying }) {
   const tLabel = PLANET_LABEL[transitPlanet] || transitPlanet;
   const nLabel = PLANET_LABEL[natalPlanet]   || natalPlanet;
   const status = applying ? 'applying (building in intensity)' : 'separating (peak has passed)';

@@ -161,37 +161,12 @@ export function getActiveAspects(
         const orb = Math.abs(dist - aspect.angle);
         if (orb > maxOrb) continue;
  
-        // Applying = transit is moving TOWARD the exact aspect angle
-        // We check by seeing if the signed diff is closing
-        const sd = signedDiff(tLon, nLon);
-        let applying;
- 
-        if (aspect.angle === 0) {
-          // Conjunction: applying if transit is approaching natal from behind
-          applying = sd < 0;
-        } else if (aspect.angle === 180) {
-          // Opposition: applying if the gap is still closing toward 180
-          applying = Math.abs(sd) < 180 && sd > 0
-            ? dist < aspect.angle
-            : dist < aspect.angle;
-          applying = orb > 0 && DAILY_MOTION[tPlanet] > (DAILY_MOTION[nPlanet] || 0)
-            ? sd < aspect.angle
-            : true;
-          // Simplified: just use whether orb is currently decreasing
-          applying = (sd > 0 && sd < 180) ? (dist < aspect.angle ? false : true) : (dist < aspect.angle ? true : false);
-        } else {
-          applying = dist < aspect.angle
-            ? sd > 0
-            : sd < 0;
-        }
- 
         // Simpler, more reliable applying check:
         // Calc position 1 hour ago, see if orb was larger
-        const oneHourAgo = new Date(Date.now() - 3600 * 1000);
         const tLonHourAgo = tLon - DAILY_MOTION[tPlanet] / 24;
         const distHourAgo = angularDistance(tLonHourAgo, nLon);
         const orbHourAgo  = Math.abs(distHourAgo - aspect.angle);
-        applying = orbHourAgo > orb; // orb was bigger before = now applying
+        const applying = orbHourAgo > orb; // orb was bigger before = now applying
  
         activeAspects.push({
           transitPlanet: tPlanet,

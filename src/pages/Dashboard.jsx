@@ -8,6 +8,7 @@ import NatalForm from '../components/NatalForm.jsx';
 import NatalSummary from '../components/NatalSummary.jsx';
 import { NatalWheel, TransitWheel } from '../components/AstroChartWheel.jsx';
 import { getZodiacInfo } from '../lib/ephemeris.js';
+import { getNatalAspects } from '../lib/patterns.js';
 import { calculateProfections } from '../lib/hellenistic.js';
 import { PlanetIcon, ZodiacIcon, UiIcon } from '../components/EphiIcons.jsx';
 import HouseTransits from '../components/HouseTransits.jsx';
@@ -337,7 +338,7 @@ export default function Dashboard() {
               <div className="card" style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem' }}>
                 <NatalWheel 
                   natal={natalChart} 
-                  aspects={natalChart.aspects || []}
+                  aspects={natalChart.positions ? getNatalAspects(natalChart.positions) : []}
                   onAspectClick={(asp) => {
                     if (asp.unknown) toast('Select an aspect from the summary for deep interpretation.');
                     else handleSynthesize(asp);

@@ -16,7 +16,7 @@ import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import { getPlanetPositions } from '../lib/ephemeris';
 import { getActiveAspects } from '../lib/aspects';
 import EphiMarkdown from '../components/EphiMarkdown';
-import ChartWheel from '../components/ChartWheel';
+import ChartWheel from '../components/AstroChartWheel.jsx';
 import { generateAspectReading } from '../lib/oracle';
 import AdSlot from '../components/AdSlot.jsx';
 
@@ -252,7 +252,6 @@ export default function ReadingPage() {
   const [pastReadings,setPastReadings]= useState([]);
   const [deepDive,    setDeepDive]    = useState(null); // { planet, text, loading }
   const [puristMode,  setPuristMode]  = useState(false);
-  const [fileUri,     setFileUri]     = useState('');
   const [userQuery,   setUserQuery]   = useState('');
   const [confirmModal,setConfirmModal]= useState(null);
   const abortRef = useRef(false);
@@ -330,7 +329,6 @@ export default function ReadingPage() {
         aspects, 
         focus, 
         userQuery: focus === 'custom' ? userQuery : '',
-        fileUri,
         mode
       });
       if (abortRef.current) return;
@@ -530,23 +528,6 @@ export default function ReadingPage() {
           </p>
         </div>
       )}
-
-      {/* Reference Book URI Box */}
-      <div className="reading-section">
-        <div className="reading-section-title">Reference Book (Optional)</div>
-        <input
-          type="text"
-          className="reading-inquiry-box"
-          placeholder="Paste Gemini File URI here..."
-          value={fileUri}
-          onChange={(e) => setFileUri(e.target.value)}
-          disabled={status === 'loading'}
-          style={{ minHeight: 'auto', height: '40px', fontFamily: 'monospace' }}
-        />
-        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-          Upload a book using the <code>node upload-book.js &lt;path-to-pdf&gt;</code> script and paste the File URI here to base the reading on its techniques.
-        </p>
-      </div>
 
       {/* Error */}
       {status === 'error' && (

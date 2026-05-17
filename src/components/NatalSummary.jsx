@@ -8,8 +8,7 @@ import { ALL_PLANETS, PLANET_META, getZodiacInfo, getPlanetPositions } from '../
 import { SIGN_RULERS } from '../lib/astronomy.js';
 import { calculateDignity, calculateLots } from '../lib/hellenistic.js';
 import { PlanetIcon, ZodiacIcon, UiIcon } from './EphiIcons.jsx';
-import { getActiveAspects } from '../lib/aspects.js';
-import { detectPatterns } from '../lib/patterns.js';
+import { getNatalAspects, detectPatterns } from '../lib/patterns.js';
 
 const BIG_THREE = [
   { key: 'sunSign',   label: 'Sun',    planet: 'sun' },
@@ -86,13 +85,13 @@ export default function NatalSummary({ chart, onClear }) {
   const ascSignIndex = chart.risingSign ? SIGNS.indexOf(chart.risingSign) : null;
 
   const bazi = useMemo(() => {
-    const d = new Date(meta.date + ' ' + meta.time);
+    const d = new Date(meta.date + 'T' + meta.time);
     return calculateBaZi(d);
   }, [meta.date, meta.time]);
 
   // Calculate alternate system for side-by-side comparison
   const alternatePositions = useMemo(() => {
-    const d = new Date(meta.date + ' ' + meta.time);
+    const d = new Date(meta.date + 'T' + meta.time);
     const altOptions = { sidereal: !isSidereal, lat: meta.lat, lon: meta.lon };
     // We need to approximate Asc for the alternate system too if we want Part of Fortune etc.
     // For now, let's just get the raw planetary longitudes
@@ -101,10 +100,9 @@ export default function NatalSummary({ chart, onClear }) {
 
   const natalAspects = useMemo(() => {
     if (!positions) return [];
-    return getActiveAspects(positions, positions, {
-      transitPlanets: ['sun','moon','mercury','venus','mars','jupiter','saturn'],
-      natalPlanets: ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'],
-    }).filter(a => ['exact', 'strong', 'moderate'].includes(a.strength));
+    const all = getNatalAspects(positions);
+    const validPlanets = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
+    return all.filter(a => validPlanets.includes(a.transitPlanet) && validPlanets.includes(a.natalPlanet) && a.orb <= 8);
   }, [positions]);
 
   const chartRulerInfo = useMemo(() => {

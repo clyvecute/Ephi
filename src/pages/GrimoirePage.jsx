@@ -141,8 +141,8 @@ export default function GrimoirePage() {
   const runDiagnostic = async () => {
     setMonitor(prev => ({ ...prev, status: 'scanning' }));
     try {
-      const { testApi } = await import('../lib/gemini');
-      const { latency, status } = await testApi();
+      const { testOracle } = await import('../lib/oracle');
+      const { latency, status } = await testOracle();
       
       // Calc storage
       let _lsTotal = 0, _xLen, _x;
@@ -368,20 +368,27 @@ export default function GrimoirePage() {
               Select the intelligence engine powering your interpretations.
             </p>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
               <button
                 onClick={() => handleProviderChange('google')}
                 className={`btn ${oracleProvider === 'google' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ flex: 1, fontSize: '0.8rem' }}
+                style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
               >
                 Google Gemini
               </button>
               <button
                 onClick={() => handleProviderChange('groq')}
                 className={`btn ${oracleProvider === 'groq' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ flex: 1, fontSize: '0.8rem' }}
+                style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
               >
                 Groq (Llama 3)
+              </button>
+              <button
+                onClick={() => handleProviderChange('openai')}
+                className={`btn ${oracleProvider === 'openai' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
+              >
+                OpenAI (GPT-4o)
               </button>
             </div>
             <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '1rem' }}>

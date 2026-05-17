@@ -32,6 +32,7 @@ function capitalize(s) {
 export default function AspectList({ aspects, title = 'Current Aspects', emptyMsg = 'No aspects found.', onSynthesize = null }) {
   const [filter, setFilter] = useState('all');
   const [expandedCards, setExpandedCards] = useState(new Set());
+  const [visibleCount, setVisibleCount] = useState(30);
 
   if (!aspects) return null;
 
@@ -79,7 +80,7 @@ export default function AspectList({ aspects, title = 'Current Aspects', emptyMs
         </div>
       ) : (
         <div className="aspect-list">
-          {filteredAspects.slice(0, 30).map((a, i) => {
+          {filteredAspects.slice(0, visibleCount).map((a, i) => {
             const metaT = PLANET_META[a.transitPlanet] || {};
             const metaN = PLANET_META[a.natalPlanet] || {};
             const color = QUALITY_COLORS[a.nature] || 'var(--border)';
@@ -198,6 +199,11 @@ export default function AspectList({ aspects, title = 'Current Aspects', emptyMs
               </div>
             );
           })}
+          {filteredAspects.length > visibleCount && (
+            <button className="btn btn-ghost" style={{ width: '100%', marginTop: '1rem' }} onClick={() => setVisibleCount(v => v + 30)}>
+              Show More Aspects
+            </button>
+          )}
         </div>
       )}
     </div>

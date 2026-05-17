@@ -8,6 +8,7 @@
 
 import * as GeminiProvider from './gemini';
 import * as GroqProvider from './providers/groq';
+import * as OpenAIProvider from './providers/openai';
 
 // Configuration: Which provider is active?
 const getActiveProvider = () => localStorage.getItem('ephi_oracle_provider') || import.meta.env.VITE_ORACLE_PROVIDER || 'google';
@@ -32,6 +33,9 @@ export async function generateReading(params) {
     case 'groq':
       return await GroqProvider.generateReading(params);
 
+    case 'openai':
+      return await OpenAIProvider.generateReading(params);
+
     default:
       throw new Error(`Oracle Provider "${provider}" is not configured.`);
   }
@@ -46,6 +50,10 @@ export async function generateAspectReading(params) {
   switch (provider) {
     case 'google':
       return await GeminiProvider.generateAspectReading(params);
+    case 'openai':
+      return await OpenAIProvider.generateAspectReading(params);
+    case 'groq':
+      return await GroqProvider.generateAspectReading(params);
     default:
       throw new Error(`Oracle Provider "${provider}" is not configured.`);
   }
@@ -59,6 +67,10 @@ export async function generateSynastryReading(params) {
   switch (provider) {
     case 'google':
       return await GeminiProvider.generateSynastryReading(params);
+    case 'openai':
+      return await OpenAIProvider.generateSynastryReading(params);
+    case 'groq':
+      return await GroqProvider.generateSynastryReading(params);
     default:
       throw new Error(`Oracle Provider "${provider}" is not configured.`);
   }
@@ -69,6 +81,10 @@ export async function generateVedicReading(params) {
   switch (provider) {
     case 'google':
       return await GeminiProvider.generateVedicReading(params);
+    case 'openai':
+      return await OpenAIProvider.generateVedicReading(params);
+    case 'groq':
+      return await GroqProvider.generateVedicReading(params);
     default:
       throw new Error(`Oracle Provider "${provider}" is not configured.`);
   }
@@ -79,6 +95,10 @@ export async function generateHoraryReading(params) {
   switch (provider) {
     case 'google':
       return await GeminiProvider.generateHoraryReading(params);
+    case 'openai':
+      return await OpenAIProvider.generateHoraryReading(params);
+    case 'groq':
+      return await GroqProvider.generateHoraryReading(params);
     default:
       throw new Error(`Oracle Provider "${provider}" is not configured.`);
   }
@@ -89,6 +109,7 @@ export async function continueHoraryReading(params) {
   switch (provider) {
     case 'google':
       return await GeminiProvider.continueHoraryReading(params);
+    // OpenAI and Groq continueHoraryReading can reuse general fallback or custom if we want (for now map to Gemini or ignore)
     default:
       throw new Error(`Oracle Provider "${provider}" is not configured.`);
   }
@@ -99,6 +120,10 @@ export async function generateReturnReading(params) {
   switch (provider) {
     case 'google':
       return await GeminiProvider.generateReturnReading(params);
+    case 'openai':
+      return await OpenAIProvider.generateReturnReading(params);
+    case 'groq':
+      return await GroqProvider.generateReturnReading(params);
     default:
       throw new Error(`Oracle Provider "${provider}" is not configured.`);
   }
@@ -110,6 +135,8 @@ export function isOracleConfigured() {
       return GeminiProvider.isGeminiConfigured();
     case 'groq':
       return GroqProvider.isGroqConfigured();
+    case 'openai':
+      return OpenAIProvider.isOpenAIConfigured();
     default:
       return false;
   }
@@ -122,6 +149,10 @@ export async function testOracle() {
   switch (PRIMARY_PROVIDER) {
     case 'google':
       return await GeminiProvider.testApi();
+    case 'openai':
+      return await OpenAIProvider.testApi();
+    case 'groq':
+      return await GroqProvider.testApi();
     default:
       return { status: 'unknown', latency: 0 };
   }

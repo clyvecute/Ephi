@@ -23,24 +23,24 @@ export async function getPlanetPositions(date = new Date(), ascLon = null, optio
   // 2. Format to Ephi standard
   const res = {};
   for (const [key, val] of Object.entries(raw)) {
-    res[key] = val.longitude; // Keep simple numeric for core compatibility
+    res[key] = { ...val }; // Keep full object
   }
 
   // 3. Special handling for nodes (standardizing names)
   if (raw.node) {
-    res.nnode = raw.node.longitude;
-    res.snode = norm(raw.node.longitude + 180);
+    res.nnode = { ...raw.node };
+    res.snode = { ...raw.node, longitude: norm(raw.node.longitude + 180) };
   }
 
   // 4. Calculate Part of Fortune if ASC is available
   if (ascLon != null) {
-    const sun = res.sun;
-    const moon = res.moon;
+    const sun = res.sun?.longitude ?? 0;
+    const moon = res.moon?.longitude ?? 0;
     const isDay = norm(sun - ascLon) > 180;
     if (isDay) {
-      res.fortune = norm(ascLon + moon - sun);
+      res.fortune = { longitude: norm(ascLon + moon - sun) };
     } else {
-      res.fortune = norm(ascLon + sun - moon);
+      res.fortune = { longitude: norm(ascLon + sun - moon) };
     }
   }
 
@@ -56,13 +56,16 @@ const SIGNS = [
 const SIGN_SYMBOLS = ['♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓'];
 
 /**
- * Converts a raw longitude (0–360°) to human-readable zodiac info.
+ * Converts a raw longitude (0–360°) or a precision object to human-readable zodiac info.
  *
- * @param {number} longitude
- * @returns {{ sign: string, symbol: string, degree: number, displayStr: string }}
+ * @param {number|Object} longitude
+ * @returns {{ sign: string, symbol: string, degree: number, displayStr: string } | null}
  */
 export function getZodiacInfo(longitude) {
-  const lon    = norm(longitude);
+  const lonValue = typeof longitude === 'object' ? longitude.longitude : longitude;
+  if (lonValue == null || isNaN(lonValue)) return null;
+
+  const lon    = norm(lonValue);
   const index  = Math.floor(lon / 30);
   const degree = lon % 30;
 

@@ -1,9 +1,9 @@
 /**
- * src/lib/providers/groq.js
+ * src/lib/providers/openai.js
  *
- * Groq AI Provider for Ephi.
- * Integrates Llama 3 (llama3-70b-8192) for extremely low-latency,
- * high-fidelity open source interpretations.
+ * OpenAI Provider for Ephi.
+ * Integrates gpt-4o-mini as a high-speed, extremely cost-effective
+ * (practically free) model, with gpt-4o as a premium fallback.
  */
 import { 
   formatNatal, 
@@ -16,17 +16,17 @@ import {
   DEG_IN_SIGN
 } from '../gemini';
 
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
 
 /**
- * Standard fetch interface for Groq Completions (OpenAI Compatible API).
+ * Standard fetch interface for OpenAI Chat Completions.
  */
-async function callGroq(prompt, maxTokens = 2000, model = 'llama-3.3-70b-versatile') {
+async function callOpenAI(prompt, maxTokens = 2000, model = 'gpt-4o-mini') {
   if (!API_KEY) {
-    throw new Error('Groq API key not found. Add VITE_GROQ_API_KEY to your env variables.');
+    throw new Error('OpenAI API key not found. Add VITE_OPENAI_API_KEY to your env variables.');
   }
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -45,24 +45,24 @@ async function callGroq(prompt, maxTokens = 2000, model = 'llama-3.3-70b-versati
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err?.error?.message || `Groq API Error ${res.status}`);
+    throw new Error(err?.error?.message || `OpenAI API Error ${res.status}`);
   }
 
   const data = await res.json();
   const text = data?.choices?.[0]?.message?.content;
-  if (!text) throw new Error('Groq returned an empty response.');
+  if (!text) throw new Error('OpenAI returned an empty response.');
   return text.trim();
 }
 
 /**
- * Generate a full transit/natal synthesis using Llama 3.
+ * Generate a full transit/natal synthesis using gpt-4o-mini.
  */
 export async function generateReading({ natal, aspects, focus = 'general', userName, userQuery, mode = 'transit' }) {
   const natalText = formatNatal(natal);
   const aspectsText = formatAspects(aspects);
   const prompt = buildSynthesisPrompt({ natal, natalText, aspectsText, focus, userName, userQuery, mode });
   
-  const text = await callGroq(prompt, 1400);
+  const text = await callOpenAI(prompt, 1400, 'gpt-4o-mini');
 
   return {
     text,
@@ -70,7 +70,7 @@ export async function generateReading({ natal, aspects, focus = 'general', userN
     userQuery,
     timestamp: new Date().toISOString(),
     aspectCount: aspects?.length || 0,
-    provider: 'groq'
+    provider: 'openai'
   };
 }
 
@@ -92,13 +92,13 @@ export async function generateAspectReading({ transitPlanet, aspectName, natalPl
     applying,
   });
 
-  const text = await callGroq(prompt, 600);
+  const text = await callOpenAI(prompt, 600, 'gpt-4o-mini');
 
   return {
     text,
     aspect: { transitPlanet, aspectName, natalPlanet, orb, applying },
     timestamp: new Date().toISOString(),
-    provider: 'groq'
+    provider: 'openai'
   };
 }
 
@@ -150,12 +150,12 @@ Write a comprehensive relationship reading for ${nameA} and ${nameB}. Use a warm
 
 Avoid clichés and generic horoscopes. The reading should feel bespoke, sophisticated, and life-affirming. Avoid calling them "the natives." Use "you" and "your".`;
 
-  const text = await callGroq(prompt, 1400);
+  const text = await callOpenAI(prompt, 1400, 'gpt-4o-mini');
 
   return {
     text,
     timestamp: new Date().toISOString(),
-    provider: 'groq'
+    provider: 'openai'
   };
 }
 
@@ -180,12 +180,12 @@ Structure your response with the exact following markdown headers:
 
 Use formatting like **bold** text and bullet points appropriately. Address the user directly as "you" in an editorial, empowering, yet deeply mystical tone.`;
 
-  const text = await callGroq(prompt, 1000);
+  const text = await callOpenAI(prompt, 1000, 'gpt-4o-mini');
 
   return {
     text,
     timestamp: new Date().toISOString(),
-    provider: 'groq'
+    provider: 'openai'
   };
 }
 
@@ -225,11 +225,11 @@ Structure your response using these headers:
 
 Tone: Sophisticated, editorial, deeply psychological, and empowering. Use "you" and address them directly.`;
 
-  const text = await callGroq(prompt, 1200);
+  const text = await callOpenAI(prompt, 1200, 'gpt-4o-mini');
   return {
     text,
     timestamp: new Date().toISOString(),
-    provider: 'groq'
+    provider: 'openai'
   };
 }
 
@@ -293,19 +293,19 @@ Structure your response using these headers:
 
 Tone: Sophisticated, technical yet accessible, deeply insightful, and objective.`;
 
-  const text = await callGroq(prompt, 1500);
+  const text = await callOpenAI(prompt, 1500, 'gpt-4o-mini');
 
   return {
     text,
     timestamp: new Date().toISOString(),
-    provider: 'groq'
+    provider: 'openai'
   };
 }
 
 /**
- * Check if Groq is fully ready.
+ * Check if the OpenAI credentials are ready.
  */
-export function isGroqConfigured() {
+export function isOpenAIConfigured() {
   return Boolean(API_KEY);
 }
 
@@ -315,7 +315,7 @@ export function isGroqConfigured() {
 export async function testApi() {
   const prompt = "REPLY ONLY WITH 'PULSE_OK'. THIS IS A CONNECTIVITY TEST.";
   const start = Date.now();
-  const text = await callGroq(prompt, 10);
+  const text = await callOpenAI(prompt, 10, 'gpt-4o-mini');
   const end = Date.now();
   return {
     latency: end - start,

@@ -146,10 +146,15 @@ export default function NavBar() {
       {/* Auth State */}
       <div className="nav-auth" style={{ paddingRight: '1rem', display: 'flex', alignItems: 'center' }}>
         {currentUser ? (
-          <button onClick={logout} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '6px 12px' }}>
-            <UiIcon name="gear" size={14} style={{ marginRight: 6 }} />
-            {currentUser.displayName?.split(' ')[0] || 'User'}
-          </button>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
+              <UiIcon name="star" size={14} style={{ marginRight: 6 }} />
+              {currentUser.displayName?.split(' ')[0] || 'User'}
+            </span>
+            <button onClick={logout} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '6px 12px' }}>
+              Logout
+            </button>
+          </div>
         ) : (
           <button onClick={loginWithGoogle} className="btn btn-primary" style={{ fontSize: '0.75rem', padding: '6px 12px' }}>
             Login

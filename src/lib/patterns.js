@@ -95,6 +95,30 @@ function buildNatalAspects(positions) {
   return { aspects, has, keys };
 }
 
+/**
+ * Returns a list of all natal aspects using natal orbs.
+ */
+export function getNatalAspects(positions) {
+  const { aspects } = buildNatalAspects(positions);
+  const SYMBOLS = {
+    conjunction: '☌', sextile: '⚹', square: '□', trine: '△', quincunx: '⚻', opposition: '☍',
+    semisextile: '⚺', sesquiquadrate: '⚼'
+  };
+  const NATURE = {
+    conjunction: 'neutral', sextile: 'soft', square: 'hard', trine: 'soft', quincunx: 'hard', opposition: 'hard',
+    semisextile: 'neutral', sesquiquadrate: 'hard'
+  };
+  
+  return aspects.map(a => ({
+    transitPlanet: a.p1,
+    natalPlanet: a.p2,
+    aspectName: a.type,
+    symbol: SYMBOLS[a.type],
+    nature: NATURE[a.type],
+    orb: a.orb,
+  })).sort((a, b) => a.orb - b.orb);
+}
+
 // ─── Main export ──────────────────────────────────────────────────────────────
 
 /**
@@ -311,7 +335,6 @@ export function detectPatterns(positions) {
         focus: 'A fated calling — karmic adjustment through the apex planet',
       };
       yodList.push(yod);
-      patterns.push(yod);
     }
   }
 
@@ -319,11 +342,13 @@ export function detectPatterns(positions) {
   for (const yod of yodList) {
     const { apex, planets } = yod;
     const base = planets.filter(p => p !== apex);
+    let isBoomerang = false;
     for (const k of keys) {
       if (planets.includes(k)) continue;
       if (!has('opposition', apex, k)) continue;
       if (!has('sextile', k, base[0]) && !has('sextile', k, base[1])) continue;
 
+      isBoomerang = true;
       patterns.push({
         id: `Boomerang-${[...planets, k].sort().join('-')}`,
         type: 'Boomerang Yod',
@@ -331,6 +356,9 @@ export function detectPatterns(positions) {
         description: `Yod (${base.join(', ')} → ${apex}) redirected through ${k}`,
         focus: 'Extreme fated tension bouncing between apex and redirector',
       });
+    }
+    if (!isBoomerang) {
+      patterns.push(yod);
     }
   }
 

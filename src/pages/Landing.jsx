@@ -86,7 +86,7 @@ function StarryDecoderText({ text, delayOffset = 500 }) {
 export default function Landing() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { currentUser, loginWithGoogle } = useAuth();
+  const { currentUser, loginWithGoogle, logout } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [navSticky, setNavSticky] = useState(false);
   const heroRef = useRef(null);
@@ -306,6 +306,9 @@ export default function Landing() {
               <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>Horary</button>
               <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>Synastry</button>
               <button className="landing-overlay-link" onClick={(e) => { toggleMenu(); handleEnterApp(e); }}>Jyotish</button>
+              {currentUser && (
+                <button className="landing-overlay-link" onClick={() => { toggleMenu(); logout(); }}>Logout</button>
+              )}
             </nav>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '../lib/firebase';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs, doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { UiIcon } from '../components/EphiIcons';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,12 +9,20 @@ export default function AdminPage() {
   const [feedback, setFeedback] = useState([]);
   const [analytics, setAnalytics] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [adsEnabled, setAdsEnabled] = useState(true);
 
   // Hardened Admin Check: Uses the unique Firebase UID for absolute security
   const isAdmin = currentUser && currentUser.uid === import.meta.env.VITE_ADMIN_UID; 
 
   useEffect(() => {
     if (!isAdmin) return;
+
+    // Real-time Ad settings sync
+    const unsubAds = onSnapshot(doc(db, 'settings', 'global'), (snap) => {
+      if (snap.exists()) {
+        setAdsEnabled(snap.data().adsEnabled !== false);
+      }
+    });
 
     const fetchData = async () => {
       setLoading(true);
@@ -34,7 +42,16 @@ export default function AdminPage() {
     };
 
     fetchData();
+    return () => unsubAds();
   }, [isAdmin]);
+
+  const handleToggleAds = async () => {
+    try {
+      await setDoc(doc(db, 'settings', 'global'), { adsEnabled: !adsEnabled }, { merge: true });
+    } catch (err) {
+      console.error('Failed to toggle advertisements:', err);
+    }
+  };
 
   if (!currentUser) {
     return (
@@ -61,6 +78,37 @@ export default function AdminPage() {
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
+        
+        {/* Global Platform Controls */}
+        <section>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+            <UiIcon name="gear" size={20} color="var(--accent)" />
+            <h2 style={{ margin: 0, fontSize: '1.5rem', fontFamily: 'var(--font-serif)' }}>Global Platform Settings</h2>
+          </div>
+          
+          <div className="ephi-card" style={{ padding: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(255,255,255,0.02)' }}>
+            <div>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700 }}>Platform Advertisements</h3>
+              <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '500px' }}>
+                Toggle advertisement display across all views. If disabled, advertisement modules will immediately disappear globally for all users.
+              </p>
+            </div>
+            
+            <button 
+              onClick={handleToggleAds}
+              className={`btn ${adsEnabled ? 'btn-primary' : 'btn-ghost'}`}
+              style={{ 
+                padding: '12px 24px', 
+                borderRadius: '12px', 
+                fontWeight: 700,
+                borderColor: adsEnabled ? 'var(--accent)' : 'var(--border)'
+              }}
+            >
+              <UiIcon name={adsEnabled ? 'sparkle' : 'pin'} size={14} style={{ marginRight: 8 }} />
+              {adsEnabled ? 'Advertisements: ACTIVE' : 'Advertisements: DISABLED'}
+            </button>
+          </div>
+        </section>
         
         {/* Feedback Section */}
         <section>

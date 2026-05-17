@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { castHoraryChart, judgeChart, HOUSE_TOPICS } from '../lib/horary';
 import { getHoraryStrictures } from '../lib/hellenistic';
 import { UiIcon, PlanetIcon } from '../components/EphiIcons';
-import ChartWheel from '../components/ChartWheel';
+import ChartWheel from '../components/AstroChartWheel.jsx';
 import { generateHoraryReading, continueHoraryReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 

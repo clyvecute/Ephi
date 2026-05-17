@@ -161,17 +161,23 @@ export default function AstroChartWheel({
   function spreadPlanets(planetList, radius) {
     if (!planetList.length) return [];
     const sorted = [...planetList].sort((a,b) => a.lon - b.lon);
-    const MIN_GAP_DEG = 7;
+    const MIN_GAP_DEG = 12;
     const result = sorted.map(p => ({ ...p, displayLon: p.lon }));
     for (let iter = 0; iter < 5; iter++) {
+      let moved = false;
       for (let i = 0; i < result.length; i++) {
         const prev = result[(i - 1 + result.length) % result.length];
         let diff = (result[i].displayLon - prev.displayLon + 360) % 360;
         if (diff < MIN_GAP_DEG) {
-          result[i].displayLon = (result[i].displayLon + (MIN_GAP_DEG - diff) / 2 + 360) % 360;
-          prev.displayLon = (prev.displayLon - (MIN_GAP_DEG - diff) / 2 + 360) % 360;
+          const shift = Math.min((MIN_GAP_DEG - diff) / 2, 2);
+          if (shift > 0.01) {
+            result[i].displayLon = (result[i].displayLon + shift + 360) % 360;
+            prev.displayLon = (prev.displayLon - shift + 360) % 360;
+            moved = true;
+          }
         }
       }
+      if (!moved) break;
     }
     return result;
   }
@@ -208,236 +214,250 @@ export default function AstroChartWheel({
   // ── SVG Build ────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ position:'relative', width:size, height:size, margin:'0 auto' }} data-ephi-chart>
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display:'block' }}>
+    <div style={{ position:'relative', width:size, height:size, margin:'0 auto' }}>
+      <div style={{ position:'absolute', inset:0, borderRadius:'50%', overflow:'hidden' }} data-ephi-chart>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ display:'block', background:'transparent' }}>
 
-        {/* White background circle */}
-        <circle cx={cx} cy={cy} r={R.outer} fill="#ffffff" stroke="#e0e0e0" strokeWidth="1"/>
+          {/* White background circle */}
+          <circle cx={cx} cy={cy} r={R.outer} fill="#ffffff" stroke="#e0e0e0" strokeWidth="1"/>
 
-        {/* ── 1. Degree ruler ring ─────────────────────────────────── */}
-        <circle cx={cx} cy={cy} r={R.ruler}  fill="none" stroke="#cccccc" strokeWidth="0.5"/>
-        <circle cx={cx} cy={cy} r={R.rulerIn} fill="#f8f9fa" stroke="#cccccc" strokeWidth="0.5"/>
-        {Array.from({length:360}, (_,i) => {
-          const isMajor = i % 10 === 0;
-          const isMid   = i % 5 === 0;
-          const tickLen = isMajor ? R.ruler - R.rulerIn : isMid ? (R.ruler - R.rulerIn)*0.6 : (R.ruler - R.rulerIn)*0.35;
-          const ang = toAngle(i);
-          const outer = polarToXY(cx, cy, R.ruler, ang);
-          const inner = polarToXY(cx, cy, R.ruler - tickLen, ang);
-          return (
-            <line key={i}
-              x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y}
-              stroke="#bbbbbb" strokeWidth={isMajor ? 1 : 0.5}
-            />
-          );
-        })}
-
-        {/* ── 2. Zodiac sign band ─────────────────────────────────── */}
-        {SIGNS.map((sign, i) => {
-          const startLon = i * 30;
-          const endLon   = startLon + 30;
-          const startAng = toAngle(startLon);
-          const endAng   = toAngle(endLon);
-          const midAng   = toAngle(startLon + 15);
-          const glyph    = polarToXY(cx, cy, R.signGlyph, midAng);
-          const elem     = SIGN_ELEMENTS[sign];
-          const elemColor = ELEMENT_COLORS[elem];
-          const outerArc = arcPath(cx, cy, R.signOuter, startAng, endAng);
-          const innerArc = arcPath(cx, cy, R.signInner, endAng, startAng);
-          const s1 = polarToXY(cx, cy, R.signOuter, startAng);
-          const s2 = polarToXY(cx, cy, R.signInner, startAng);
-          const e1 = polarToXY(cx, cy, R.signOuter, endAng);
-          const e2 = polarToXY(cx, cy, R.signInner, endAng);
-          return (
-            <g key={sign}>
-              <path
-                d={`${outerArc} L ${e2.x} ${e2.y} ${innerArc} L ${s1.x} ${s1.y} Z`}
-                fill={SIGN_COLORS[i]} stroke="#cccccc" strokeWidth="0.5"
+          {/* ── 1. Degree ruler ring ─────────────────────────────────── */}
+          <circle cx={cx} cy={cy} r={R.ruler}  fill="none" stroke="#cccccc" strokeWidth="0.5"/>
+          <circle cx={cx} cy={cy} r={R.rulerIn} fill="#f8f9fa" stroke="#cccccc" strokeWidth="0.5"/>
+          {Array.from({length:360}, (_,i) => {
+            const isMajor = i % 10 === 0;
+            const isMid   = i % 5 === 0;
+            const tickLen = isMajor ? R.ruler - R.rulerIn : isMid ? (R.ruler - R.rulerIn)*0.6 : (R.ruler - R.rulerIn)*0.35;
+            const ang = toAngle(i);
+            const outer = polarToXY(cx, cy, R.ruler, ang);
+            const inner = polarToXY(cx, cy, R.ruler - tickLen, ang);
+            return (
+              <line key={i}
+                x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y}
+                stroke="#bbbbbb" strokeWidth={isMajor ? 1 : 0.5}
               />
-              {/* Sign divider lines */}
-              <line x1={s1.x} y1={s1.y} x2={s2.x} y2={s2.y} stroke="#bbbbbb" strokeWidth="0.7"/>
-              {/* Glyph */}
-              <text
-                x={glyph.x} y={glyph.y}
-                textAnchor="middle" dominantBaseline="central"
-                fontSize={size * 0.034} fill={elemColor} fontWeight="600"
-                style={{ userSelect:'none' }}
-              >
-                {SIGN_GLYPHS[sign]}
-              </text>
-            </g>
-          );
-        })}
+            );
+          })}
 
-        {/* ── 3. House cusp ring ──────────────────────────────────── */}
-        <circle cx={cx} cy={cy} r={R.cuspsOuter} fill="#fafafa" stroke="#d0d0d0" strokeWidth="0.7"/>
-        <circle cx={cx} cy={cy} r={R.cuspsInner} fill="#ffffff" stroke="#d0d0d0" strokeWidth="0.7"/>
-
-        {cusps.map((cuspLon, i) => {
-          const ang = toAngle(cuspLon);
-          const outer = polarToXY(cx, cy, R.cuspsOuter, ang);
-          const inner = polarToXY(cx, cy, R.cuspsInner, ang);
-          const isAxis = [0,3,6,9].includes(i);
-          // House number midpoint
-          const nextLon = cusps[(i+1)%12];
-          let midLon = cuspLon + ((nextLon - cuspLon + 360) % 360) / 2;
-          const midAng = toAngle(midLon);
-          const numPos = polarToXY(cx, cy, R.houseNum, midAng);
-          return (
-            <g key={i}>
-              <line x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y}
-                stroke={isAxis ? '#888888' : '#cccccc'}
-                strokeWidth={isAxis ? 1.2 : 0.6}
-              />
-              <text
-                x={numPos.x} y={numPos.y}
-                textAnchor="middle" dominantBaseline="central"
-                fontSize={size * 0.026} fill="#999999"
-                style={{ userSelect:'none', cursor:'pointer' }}
-                onClick={() => onHouseClick?.(i+1)}
-              >
-                {i+1}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* ── 4. ASC / DSC / MC / IC axis labels ─────────────────── */}
-        {[
-          { label:'AC', lon: ascLon,      side:-1 },
-          { label:'DC', lon: ascLon+180,  side:1  },
-          { label:'MC', lon: (natal.mc?.longitude ?? ascLon+270), side:0, top:true },
-          { label:'IC', lon: (natal.mc?.longitude ?? ascLon+270)+180, side:0, top:false },
-        ].map(({ label, lon, side, top }) => {
-          const ang = toAngle(((lon%360)+360)%360);
-          const pos = polarToXY(cx, cy, R.signOuter + size*0.028, ang);
-          return (
-            <text key={label} x={pos.x} y={pos.y}
-              textAnchor="middle" dominantBaseline="central"
-              fontSize={size * 0.030} fill="#b8860b" fontWeight="800"
-              style={{ userSelect:'none' }}
-            >
-              {label}
-            </text>
-          );
-        })}
-
-        {/* ── 5. Aspect lines (inner circle) ──────────────────────── */}
-        {/* Lines always use p.lon (real ecliptic position), not displayLon.   */}
-        {/* This keeps aspect geometry astronomically correct even when glyphs  */}
-        {/* are visually spread to avoid overlap.                               */}
-        <circle cx={cx} cy={cy} r={R.aspectRing} fill="#fafafa" stroke="#e8e8e8" strokeWidth="0.5"/>
-        {aspects.map((asp, idx) => {
-          const p1key = (asp.transitPlanet || asp.planet1 || '').toLowerCase();
-          const p2key = (asp.natalPlanet  || asp.planet2 || '').toLowerCase();
-          const p1 = planets.find(p => p.key === p1key);
-          const p2 = planets.find(p => p.key === p2key);
-          if (!p1 || !p2) return null;
-          const cfg = ASPECT_CONFIG[asp.aspectName] || ASPECT_CONFIG.sextile;
-          const strengthMult = asp.strength === 'exact' ? 2.5 : asp.strength === 'strong' ? 1.8 : 1.0;
-          // Always use real lon for geometrically correct aspect lines
-          const a1  = toAngle(p1.lon);
-          const a2  = toAngle(p2.lon);
-          const pt1 = polarToXY(cx, cy, R.aspectRing, a1);
-          const pt2 = polarToXY(cx, cy, R.aspectRing, a2);
-          return (
-            <g key={idx} style={{ cursor:'pointer' }} onClick={() => onAspectClick?.(asp)}>
-              <line
-                x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
-                stroke={cfg.color}
-                strokeWidth={cfg.width * strengthMult}
-                strokeDasharray={cfg.dash}
-                strokeOpacity="0.7"
-              />
-              {/* Small dot at each endpoint so origin is clear even when glyph is spread */}
-              <circle cx={pt1.x} cy={pt1.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
-              <circle cx={pt2.x} cy={pt2.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
-            </g>
-          );
-        })}
-
-        {/* ── 6. Natal planet glyphs + degree labels ──────────────── */}
-        {spreadNatal.map(p => {
-          const dispAng = toAngle(p.displayLon);
-          const realAng = toAngle(p.lon);
-          const gPos = polarToXY(cx, cy, R.planets, dispAng);
-          const dPos = polarToXY(cx, cy, R.planets - size*0.065, dispAng);
-          const tickOuter = polarToXY(cx, cy, R.cuspsInner - size*0.004, realAng);
-          const tickInner = polarToXY(cx, cy, R.cuspsInner - size*0.025, realAng);
-          const color = PLANET_COLORS[p.key] || '#444444';
-          return (
-            <g key={p.key}>
-              {/* Tick from cusp ring to real position */}
-              <line x1={tickOuter.x} y1={tickOuter.y} x2={tickInner.x} y2={tickInner.y}
-                stroke={color} strokeWidth="1"/>
-              {/* Connector from real position to displayed glyph */}
-              {Math.abs(p.displayLon - p.lon) > 1 && (() => {
-                const realPos = polarToXY(cx, cy, R.planets + size*0.028, realAng);
-                const dispConnector = polarToXY(cx, cy, R.planets + size*0.012, dispAng);
-                return <line x1={realPos.x} y1={realPos.y} x2={dispConnector.x} y2={dispConnector.y}
-                  stroke={color} strokeWidth="0.5" strokeOpacity="0.5" strokeDasharray="2,2"/>;
-              })()}
-              {/* Glyph */}
-              <text x={gPos.x} y={gPos.y}
-                textAnchor="middle" dominantBaseline="central"
-                fontSize={size * 0.040} fill={color}
-                style={{ userSelect:'none', fontWeight:'600' }}
-              >
-                {PLANET_GLYPHS[p.key]}
-              </text>
-              {/* Retrograde marker */}
-              {p.retrograde && (
-                <text x={gPos.x + size*0.020} y={gPos.y - size*0.022}
+          {/* ── 2. Zodiac sign band ─────────────────────────────────── */}
+          {SIGNS.map((sign, i) => {
+            const startLon = i * 30;
+            const endLon   = startLon + 30;
+            const startAng = toAngle(startLon);
+            const endAng   = toAngle(endLon);
+            const midAng   = toAngle(startLon + 15);
+            const glyph    = polarToXY(cx, cy, R.signGlyph, midAng);
+            const elem     = SIGN_ELEMENTS[sign];
+            const elemColor = ELEMENT_COLORS[elem];
+            const outerArc = arcPath(cx, cy, R.signOuter, startAng, endAng);
+            const innerArc = arcPath(cx, cy, R.signInner, endAng, startAng);
+            const s1 = polarToXY(cx, cy, R.signOuter, startAng);
+            const s2 = polarToXY(cx, cy, R.signInner, startAng);
+            const e1 = polarToXY(cx, cy, R.signOuter, endAng);
+            const e2 = polarToXY(cx, cy, R.signInner, endAng);
+            return (
+              <g key={sign}>
+                <path
+                  d={`${outerArc} L ${e2.x} ${e2.y} ${innerArc} L ${s1.x} ${s1.y} Z`}
+                  fill={SIGN_COLORS[i]} stroke="#cccccc" strokeWidth="0.5"
+                />
+                {/* Sign divider lines */}
+                <line x1={s1.x} y1={s1.y} x2={s2.x} y2={s2.y} stroke="#bbbbbb" strokeWidth="0.7"/>
+                {/* Glyph */}
+                <text
+                  x={glyph.x} y={glyph.y}
                   textAnchor="middle" dominantBaseline="central"
-                  fontSize={size * 0.020} fill={color} fontStyle="italic"
+                  fontSize={size * 0.034} fill={elemColor} fontWeight="600"
                   style={{ userSelect:'none' }}
-                >R</text>
-              )}
-              {/* Degree + minute label */}
-              <text x={dPos.x} y={dPos.y}
+                >
+                  {SIGN_GLYPHS[sign]}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── 3. House cusp ring ──────────────────────────────────── */}
+          <circle cx={cx} cy={cy} r={R.cuspsOuter} fill="#fafafa" stroke="#d0d0d0" strokeWidth="0.7"/>
+          <circle cx={cx} cy={cy} r={R.cuspsInner} fill="#ffffff" stroke="#d0d0d0" strokeWidth="0.7"/>
+
+          {cusps.map((cuspLon, i) => {
+            const ang = toAngle(cuspLon);
+            const outer = polarToXY(cx, cy, R.cuspsOuter, ang);
+            const inner = polarToXY(cx, cy, R.cuspsInner, ang);
+            const isAxis = [0,3,6,9].includes(i);
+            // House number midpoint
+            const nextLon = cusps[(i+1)%12];
+            let midLon = cuspLon + ((nextLon - cuspLon + 360) % 360) / 2;
+            const midAng = toAngle(midLon);
+            const numPos = polarToXY(cx, cy, R.houseNum, midAng);
+            return (
+              <g key={i}>
+                <line x1={outer.x} y1={outer.y} x2={inner.x} y2={inner.y}
+                  stroke={isAxis ? '#888888' : '#cccccc'}
+                  strokeWidth={isAxis ? 1.2 : 0.6}
+                />
+                <text
+                  x={numPos.x} y={numPos.y}
+                  textAnchor="middle" dominantBaseline="central"
+                  fontSize={size * 0.026} fill="#999999"
+                  style={{ userSelect:'none', cursor:'pointer' }}
+                  onClick={() => onHouseClick?.(i+1)}
+                >
+                  {i+1}
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── 4. ASC / DSC / MC / IC axis labels ─────────────────── */}
+          {[
+            { label:'AC', lon: ascLon,      side:-1 },
+            { label:'DC', lon: ascLon+180,  side:1  },
+            { label:'MC', lon: (natal.mc?.longitude ?? ascLon+270), side:0, top:true },
+            { label:'IC', lon: (natal.mc?.longitude ?? ascLon+270)+180, side:0, top:false },
+          ].map(({ label, lon, side, top }) => {
+            const ang = toAngle(((lon%360)+360)%360);
+            const pos = polarToXY(cx, cy, R.signOuter + size*0.028, ang);
+            return (
+              <text key={label} x={pos.x} y={pos.y}
                 textAnchor="middle" dominantBaseline="central"
-                fontSize={size * 0.022} fill="#666666"
+                fontSize={size * 0.030} fill="#b8860b" fontWeight="800"
                 style={{ userSelect:'none' }}
               >
-                {p.deg}°{String(p.min).padStart(2,'0')}′
+                {label}
               </text>
-            </g>
-          );
-        })}
+            );
+          })}
 
-        {/* ── 7. Transit ring (bi-wheel) ───────────────────────────── */}
-        {transits && (
-          <>
-            <circle cx={cx} cy={cy} r={R.cuspsOuter * 1.05} fill="none" stroke="#aaccff" strokeWidth="1" strokeDasharray="4,3"/>
-            {spreadTransit.map(p => {
-              const dispAng = toAngle(p.displayLon);
-              const color = PLANET_COLORS[p.key] || '#4488cc';
-              const gPos = polarToXY(cx, cy, R.signInner - size*0.050, dispAng);
-              return (
-                <g key={`t-${p.key}`}>
-                  <text x={gPos.x} y={gPos.y}
+          {/* ── 5. Aspect lines (inner circle) ──────────────────────── */}
+          {/* Lines always use p.lon (real ecliptic position), not displayLon.   */}
+          {/* This keeps aspect geometry astronomically correct even when glyphs  */}
+          {/* are visually spread to avoid overlap.                               */}
+          <circle cx={cx} cy={cy} r={R.aspectRing} fill="#fafafa" stroke="#e8e8e8" strokeWidth="0.5"/>
+          {aspects.map((asp, idx) => {
+            const p1key = (asp.transitPlanet || asp.planet1 || '').toLowerCase();
+            const p2key = (asp.natalPlanet  || asp.planet2 || '').toLowerCase();
+            
+            let p1, p2;
+            if (mode === 'transit' || mode === 'synastry') {
+              p1 = transitPlanets.find(p => p.key === p1key);
+              p2 = planets.find(p => p.key === p2key);
+            } else {
+              p1 = planets.find(p => p.key === p1key);
+              p2 = planets.find(p => p.key === p2key);
+            }
+            
+            if (!p1 || !p2) return null;
+            const cfg = ASPECT_CONFIG[asp.aspectName] || ASPECT_CONFIG.sextile;
+            const strengthMult = asp.strength === 'exact' ? 2.5 : asp.strength === 'strong' ? 1.8 : 1.0;
+            // Always use real lon for geometrically correct aspect lines
+            const a1  = toAngle(p1.lon);
+            const a2  = toAngle(p2.lon);
+            const pt1 = polarToXY(cx, cy, R.aspectRing, a1);
+            const pt2 = polarToXY(cx, cy, R.aspectRing, a2);
+            return (
+              <g key={idx} style={{ cursor:'pointer' }} onClick={() => onAspectClick?.(asp)}>
+                <line
+                  x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
+                  stroke={cfg.color}
+                  strokeWidth={cfg.width * strengthMult}
+                  strokeDasharray={cfg.dash}
+                  strokeOpacity="0.7"
+                />
+                <line
+                  x1={pt1.x} y1={pt1.y} x2={pt2.x} y2={pt2.y}
+                  stroke="transparent"
+                  strokeWidth="12"
+                />
+                {/* Small dot at each endpoint so origin is clear even when glyph is spread */}
+                <circle cx={pt1.x} cy={pt1.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
+                <circle cx={pt2.x} cy={pt2.y} r={size * 0.006} fill={cfg.color} opacity="0.6"/>
+              </g>
+            );
+          })}
+
+          {/* ── 6. Natal planet glyphs + degree labels ──────────────── */}
+          {spreadNatal.map(p => {
+            const dispAng = toAngle(p.displayLon);
+            const realAng = toAngle(p.lon);
+            const gPos = polarToXY(cx, cy, R.planets, dispAng);
+            const dPos = polarToXY(cx, cy, R.planets - size*0.065, dispAng);
+            const tickOuter = polarToXY(cx, cy, R.cuspsInner - size*0.004, realAng);
+            const tickInner = polarToXY(cx, cy, R.cuspsInner - size*0.025, realAng);
+            const color = PLANET_COLORS[p.key] || '#444444';
+            return (
+              <g key={p.key}>
+                {/* Tick from cusp ring to real position */}
+                <line x1={tickOuter.x} y1={tickOuter.y} x2={tickInner.x} y2={tickInner.y}
+                  stroke={color} strokeWidth="1"/>
+                {/* Connector from real position to displayed glyph */}
+                {Math.abs(p.displayLon - p.lon) > 1 && (() => {
+                  const realPos = polarToXY(cx, cy, R.planets + size*0.028, realAng);
+                  const dispConnector = polarToXY(cx, cy, R.planets + size*0.012, dispAng);
+                  return <line x1={realPos.x} y1={realPos.y} x2={dispConnector.x} y2={dispConnector.y}
+                    stroke={color} strokeWidth="0.5" strokeOpacity="0.5" strokeDasharray="2,2"/>;
+                })()}
+                {/* Glyph */}
+                <text x={gPos.x} y={gPos.y}
+                  textAnchor="middle" dominantBaseline="central"
+                  fontSize={size * 0.040} fill={color}
+                  style={{ userSelect:'none', fontWeight:'600' }}
+                >
+                  {PLANET_GLYPHS[p.key]}
+                </text>
+                {/* Retrograde marker */}
+                {p.retrograde && (
+                  <text x={gPos.x + size*0.020} y={gPos.y - size*0.022}
                     textAnchor="middle" dominantBaseline="central"
-                    fontSize={size * 0.036} fill={color} opacity="0.85"
+                    fontSize={size * 0.020} fill={color} fontStyle="italic"
                     style={{ userSelect:'none' }}
-                  >
-                    {PLANET_GLYPHS[p.key]}
-                  </text>
-                  {p.retrograde && (
-                    <text x={gPos.x + size*0.018} y={gPos.y - size*0.020}
-                      fontSize={size*0.018} fill={color} fontStyle="italic"
+                  >R</text>
+                )}
+                {/* Degree + minute label */}
+                <text x={dPos.x} y={dPos.y}
+                  textAnchor="middle" dominantBaseline="central"
+                  fontSize={size * 0.022} fill="#666666"
+                  style={{ userSelect:'none' }}
+                >
+                  {p.deg}°{String(p.min).padStart(2,'0')}′
+                </text>
+              </g>
+            );
+          })}
+
+          {/* ── 7. Transit ring (bi-wheel) ───────────────────────────── */}
+          {transits && (
+            <>
+              <circle cx={cx} cy={cy} r={R.cuspsOuter * 1.05} fill="none" stroke="#aaccff" strokeWidth="1" strokeDasharray="4,3"/>
+              {spreadTransit.map(p => {
+                const dispAng = toAngle(p.displayLon);
+                const color = PLANET_COLORS[p.key] || '#4488cc';
+                const gPos = polarToXY(cx, cy, R.signInner - size*0.050, dispAng);
+                return (
+                  <g key={`t-${p.key}`}>
+                    <text x={gPos.x} y={gPos.y}
+                      textAnchor="middle" dominantBaseline="central"
+                      fontSize={size * 0.036} fill={color} opacity="0.85"
                       style={{ userSelect:'none' }}
-                    >R</text>
-                  )}
-                </g>
-              );
-            })}
-          </>
-        )}
+                    >
+                      {PLANET_GLYPHS[p.key]}
+                    </text>
+                    {p.retrograde && (
+                      <text x={gPos.x + size*0.018} y={gPos.y - size*0.020}
+                        fontSize={size*0.018} fill={color} fontStyle="italic"
+                        style={{ userSelect:'none' }}
+                      >R</text>
+                    )}
+                  </g>
+                );
+              })}
+            </>
+          )}
 
-        {/* ── 8. Center circle ────────────────────────────────────── */}
-        <circle cx={cx} cy={cy} r={R.center} fill="#ffffff" stroke="#e0e0e0" strokeWidth="0.8"/>
+        {/* ── 8. Center circle (Removed to allow aspect lines to cross freely) ────────────────────────────────────── */}
 
-      </svg>
+        </svg>
+      </div>
 
       {/* Download button */}
       <button

@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { db } from '../lib/firebase';
+import { doc, onSnapshot } from 'firebase/firestore';
 
 /**
  * AdSlot Component
@@ -10,6 +12,22 @@ import React from 'react';
  * @param {object} style - Custom styles
  */
 export default function AdSlot({ type = 'banner', slotId, style }) {
+  const [adsEnabled, setAdsEnabled] = useState(true);
+
+  useEffect(() => {
+    try {
+      const unsub = onSnapshot(doc(db, 'settings', 'global'), (snap) => {
+        if (snap.exists()) {
+          setAdsEnabled(snap.data().adsEnabled !== false);
+        }
+      });
+      return () => unsub();
+    } catch (err) {
+      console.warn('Failed to listen to global ad settings:', err);
+    }
+  }, []);
+
+  if (!adsEnabled) return null;
   // Placeholder logic - shows a subtle box if no ad script is active
   // In production, you would replace this with your actual ad network script
   
