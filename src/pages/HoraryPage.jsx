@@ -5,6 +5,7 @@ import { UiIcon, PlanetIcon } from '../components/EphiIcons';
 import ChartWheel from '../components/AstroChartWheel.jsx';
 import { generateHoraryReading, continueHoraryReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
+import { store } from '../lib/store';
 
 export default function HoraryPage() {
   const [question, setQuestion] = useState('');
@@ -26,12 +27,12 @@ export default function HoraryPage() {
   const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
-    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     setPuristMode(settings.puristMode || false);
 
     try {
-      const cached = localStorage.getItem('astro_horary_history');
-      if (cached) setHistory(JSON.parse(cached));
+      const cached = store.getJSON('astro_horary_history');
+      if (cached) setHistory(cached);
     } catch {}
   }, []);
 
@@ -107,7 +108,7 @@ export default function HoraryPage() {
         lng = coords.lng;
       } else {
         try {
-          const natal = JSON.parse(localStorage.getItem('astro_natal'));
+          const natal = store.getJSON('astro_natal');
           if (natal?.meta?.lat && natal?.meta?.lng) {
             lat = natal.meta.lat;
             lng = natal.meta.lng;
@@ -145,7 +146,7 @@ export default function HoraryPage() {
       const newHistory = [newHistoryItem, ...history].slice(0, 50);
       setHistory(newHistory);
       setCurrentHistoryIndex(0);
-      localStorage.setItem('astro_horary_history', JSON.stringify(newHistory));
+      store.setJSON('astro_horary_history', newHistory);
     } catch (err) {
       setError(err.message || 'Failed to cast horary chart.');
     } finally {
@@ -210,7 +211,7 @@ export default function HoraryPage() {
           chatHistory: finalChat
         };
         setHistory(updatedHistory);
-        localStorage.setItem('astro_horary_history', JSON.stringify(updatedHistory));
+        store.setJSON('astro_horary_history', updatedHistory);
       }
     } catch (err) {
       setAiError(err.message || 'The Oracle is silent. Try again.');

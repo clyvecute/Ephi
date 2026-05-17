@@ -31,6 +31,7 @@ const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
 import FeedbackModal from './components/FeedbackModal';
 import { logPageView } from './lib/analytics';
+import { store } from './lib/store';
 
 // Minimal full-screen loading state shown during lazy load
 function PageLoader() {
@@ -105,7 +106,7 @@ export default function App() {
     const prefs = getPreferences();
     if (prefs.enabled) {
       try {
-        const natal = JSON.parse(localStorage.getItem('astro_natal'));
+        const natal = store.getJSON('astro_natal');
         if (natal) scheduleAspectChecks(natal);
       } catch {}
     }

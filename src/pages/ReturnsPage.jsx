@@ -8,6 +8,7 @@ import { TransitWheel } from '../components/AstroChartWheel';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import { generateReturnReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle.js';
 import EphiMarkdown from '../components/EphiMarkdown.jsx';
+import { store } from '../lib/store';
 
 export default function ReturnsPage() {
   const [natal, setNatal] = useState(null);
@@ -23,8 +24,8 @@ export default function ReturnsPage() {
 
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('astro_natal');
-      if (cached) setNatal(JSON.parse(cached));
+      const cached = store.getJSON('astro_natal');
+      if (cached) setNatal(cached);
     } catch {}
   }, []);
 

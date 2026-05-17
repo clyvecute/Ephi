@@ -7,6 +7,7 @@ import {
   signOut 
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
+import { store } from '../lib/store';
 
 const AuthContext = createContext();
 
@@ -77,34 +78,53 @@ export function AuthProvider({ children }) {
   };
 
   // Handle Firebase Sign-out
-  const triggerFirebaseLogout = () => {
-    signOut(auth);
+  const triggerFirebaseLogout = async () => {
+    store.clear();
+    store.setUser(null);
+    await signOut(auth);
     closeAuthModal();
   };
 
   useEffect(() => {
     let unsubs = [];
 
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      // Configure Local Store Context
+      store.setUser(user?.uid || null);
+      store.clearLegacy();
+
       setCurrentUser(user);
 
       if (user) {
         try {
+          // FIX: Force token refresh before attaching Firestore listeners.
+          // Without this, onSnapshot fires before the Firestore auth token
+          // is ready → permission-denied errors even though rules are correct.
+          await user.getIdToken(/* forceRefresh */ true);
+
           // Pull Library Data
           const libRef = doc(db, 'users', user.uid, 'data', 'library');
           unsubs.push(onSnapshot(libRef, (snap) => {
             if (snap.exists()) {
-              localStorage.setItem('ephi_library', JSON.stringify(snap.data()));
+              store.setJSON('ephi_library', snap.data());
             }
-          }, (err) => console.error("Library sync error:", err)));
+          }, (err) => {
+            if (err.code !== 'permission-denied') {
+              console.error("Library sync error:", err);
+            }
+          }));
 
           // Pull Settings
           const userRef = doc(db, 'users', user.uid);
           unsubs.push(onSnapshot(userRef, (snap) => {
             if (snap.exists() && snap.data()?.settings?.persona) {
-              localStorage.setItem('ephi_persona', snap.data().settings.persona);
+              store.set('ephi_persona', snap.data().settings.persona);
             }
-          }, (err) => console.error("Settings sync error:", err)));
+          }, (err) => {
+            if (err.code !== 'permission-denied') {
+              console.error("Settings sync error:", err);
+            }
+          }));
         } catch (e) {
           console.error("Sync error:", e);
         }

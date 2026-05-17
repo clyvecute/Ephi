@@ -16,10 +16,11 @@ const STORAGE_KEY = 'ephi_library';
  */
 import { auth, db } from './firebase';
 import { doc, setDoc } from 'firebase/firestore';
+import { store } from './store.js';
 
 export function getLibrary() {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    return store.getJSON(STORAGE_KEY) || {};
   } catch {
     return {};
   }
@@ -33,7 +34,7 @@ export function saveToLibrary(toolKey, fileData) {
     lib[toolKey] = [lib[toolKey]];
   }
   lib[toolKey].push(fileData);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
+  store.setJSON(STORAGE_KEY, lib);
 
   if (auth.currentUser) {
     const ref = doc(db, 'users', auth.currentUser.uid, 'data', 'library');
@@ -54,7 +55,7 @@ export function removeFromLibrary(toolKey, index = null) {
     delete lib[toolKey];
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(lib));
+  store.setJSON(STORAGE_KEY, lib);
 
   if (auth.currentUser) {
     const ref = doc(db, 'users', auth.currentUser.uid, 'data', 'library');

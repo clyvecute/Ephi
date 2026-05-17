@@ -6,6 +6,7 @@
 import { detectPatterns } from './patterns.js';
 import { getLatestReading } from './readingCache.js';
 import { getBookForTool } from './library.js';
+import { store } from './store.js';
 // Usage:
 //   import { generateReading, generateAspectReading } from '../lib/gemini.js';
 //
@@ -196,7 +197,7 @@ const PERSONA_CONTEXT = {
 };
 
 function getPersona() {
-  return localStorage.getItem('ephi_persona') || 'stoic';
+  return store.get('ephi_persona') || 'stoic';
 }
 
 /**

@@ -7,6 +7,7 @@ import { generatePrecisionNatalChart } from '../lib/natal.js';
 import { auth, db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
+import { store } from '../lib/store';
 
 const STORAGE_KEY = 'astro_natal';
 
@@ -15,23 +16,22 @@ export function useNatal() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Load from localStorage on mount
+  // Load from store on mount
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const chart = JSON.parse(raw);
+      const chart = store.getJSON(STORAGE_KEY);
+      if (chart) {
         // Sanity check: ensure the chart isn't corrupted with NaNs
         // Check for both legacy and new structure (positions.Sun vs positions.sun)
         const hasSun = chart?.positions?.Sun || chart?.positions?.sun;
         if (hasSun != null) {
           setNatalChart(chart);
         } else {
-          localStorage.removeItem(STORAGE_KEY);
+          store.remove(STORAGE_KEY);
         }
       }
     } catch {
-      localStorage.removeItem(STORAGE_KEY);
+      store.remove(STORAGE_KEY);
     }
   }, []);
 
@@ -49,7 +49,7 @@ export function useNatal() {
             // Only update if it's a valid chart (ignore soft-deletes)
             if (hasSun != null && !data._deleted) {
               setNatalChart(data);
-              localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+              store.setJSON(STORAGE_KEY, data);
             }
           }
         });
@@ -75,7 +75,7 @@ export function useNatal() {
       });
       
       // Save local first for instant UX
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(chart));
+      store.setJSON(STORAGE_KEY, chart);
       setNatalChart(chart);
 
       // Sync to cloud if authenticated
@@ -94,7 +94,7 @@ export function useNatal() {
   }
 
   async function clearChart() {
-    localStorage.removeItem(STORAGE_KEY);
+    store.remove(STORAGE_KEY);
     setNatalChart(null);
     if (auth.currentUser) {
       const ref = doc(db, 'users', auth.currentUser.uid, 'data', 'natal');

@@ -17,15 +17,17 @@ import NatalForm from '../components/NatalForm.jsx';
 import SynastryGrid from '../components/SynastryGrid.jsx';
 import { SynastryWheel } from '../components/AstroChartWheel.jsx';
 
+import { store } from '../lib/store';
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getNatalA() {
-  try { return JSON.parse(localStorage.getItem('astro_natal') || 'null'); }
+  try { return store.getJSON('astro_natal'); }
   catch { return null; }
 }
 
 function getPartners() {
-  try { return JSON.parse(localStorage.getItem('astro_partners') || '[]'); }
+  try { return store.getJSON('astro_partners', []); }
   catch { return []; }
 }
 
@@ -33,7 +35,7 @@ function savePartner(partner) {
   try {
     const existing = getPartners();
     const updated  = [partner, ...existing.filter(p => p.name !== partner.name)].slice(0, 10);
-    localStorage.setItem('astro_partners', JSON.stringify(updated));
+    store.setJSON('astro_partners', updated);
   } catch {}
 }
 
@@ -158,7 +160,7 @@ export default function SynastryPage() {
   const [puristMode,    setPuristMode]    = useState(false);
 
   useEffect(() => {
-    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     setPuristMode(settings.puristMode || false);
 
     const natal = getNatalA();

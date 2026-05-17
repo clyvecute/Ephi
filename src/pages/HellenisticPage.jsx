@@ -5,6 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import { calculateProfections, calculateFirdaria, calculateLots } from '../lib/hellenistic';
+import { store } from '../lib/store';
 
 export default function HellenisticPage() {
   const [natal, setNatal] = useState(null);
@@ -15,9 +16,9 @@ export default function HellenisticPage() {
 
   useEffect(() => {
     try {
-      const cached = localStorage.getItem('astro_natal');
+      const cached = store.getJSON('astro_natal');
       if (cached) {
-        const parsed = JSON.parse(cached);
+        const parsed = cached;
         setNatal(parsed);
         
         const ascLon = parsed.ascendant?.longitude ?? parsed.positions.sun.longitude;

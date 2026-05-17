@@ -3,12 +3,12 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './Toast';
 import { UiIcon } from './EphiIcons';
+import { store } from '../lib/store';
 
 function getSignificantAspectCount() {
   try {
-    const cached = localStorage.getItem('astro_aspects');
-    if (!cached) return 0;
-    const data = JSON.parse(cached);
+    const data = store.getJSON('astro_aspects');
+    if (!data) return 0;
     return (data.aspects || []).filter(
       (a) => a.strength === 'exact' || a.strength === 'strong'
     ).length;
@@ -19,7 +19,7 @@ function getSignificantAspectCount() {
 
 function hasNatalChart() {
   try {
-    return Boolean(localStorage.getItem('astro_natal'));
+    return Boolean(store.get('astro_natal'));
   } catch {
     return false;
   }
@@ -47,7 +47,7 @@ export default function NavBar() {
     function refresh() {
       setSigCount(getSignificantAspectCount());
       setHasNatal(hasNatalChart());
-      const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+      const settings = store.getJSON('ephi_settings') || {};
       setPuristMode(settings.puristMode || false);
     }
     refresh();

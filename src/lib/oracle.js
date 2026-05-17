@@ -9,9 +9,10 @@
 import * as GeminiProvider from './gemini';
 import * as GroqProvider from './providers/groq';
 import * as OpenAIProvider from './providers/openai';
+import { store } from './store.js';
 
 // Configuration: Which provider is active?
-const getActiveProvider = () => localStorage.getItem('ephi_oracle_provider') || import.meta.env.VITE_ORACLE_PROVIDER || 'google';
+const getActiveProvider = () => store.get('ephi_oracle_provider') || import.meta.env.VITE_ORACLE_PROVIDER || 'google';
 const PRIMARY_PROVIDER = getActiveProvider();
 
 /**
@@ -19,7 +20,7 @@ const PRIMARY_PROVIDER = getActiveProvider();
  */
 export async function generateReading(params) {
   // Respect Purist Mode: If the user has disabled AI in settings, don't even call the API
-  const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+  const settings = store.getJSON('ephi_settings') || {};
   if (settings.puristMode) {
     throw new Error('AI Synthesis is disabled in your Oracle Settings.');
   }

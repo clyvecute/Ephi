@@ -8,6 +8,7 @@ import EphiMarkdown from '../components/EphiMarkdown';
 import { useAuth } from '../contexts/AuthContext';
 import { db } from '../lib/firebase';
 import { collection, query, orderBy, limit, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { store } from '../lib/store';
 
 export default function GrimoirePage() {
   const { currentUser, loginWithGoogle } = useAuth();
@@ -48,25 +49,25 @@ export default function GrimoirePage() {
   const [manualUri, setManualUri] = useState('');
   const [selectedTool, setSelectedTool] = useState('global');
   const [importStatus, setImportStatus] = useState('');
-  const [persona, setPersona] = useState(localStorage.getItem('ephi_persona') || 'stoic');
-  const [oracleProvider, setOracleProvider] = useState(localStorage.getItem('ephi_oracle_provider') || 'google');
+  const [persona, setPersona] = useState(() => store.get('ephi_persona') || 'stoic');
+  const [oracleProvider, setOracleProvider] = useState(() => store.get('ephi_oracle_provider') || 'google');
   const [puristMode, setPuristMode] = useState(() => {
-    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     return settings.puristMode || false;
   });
   const toast = useToast();
 
   const handleProviderChange = (val) => {
     setOracleProvider(val);
-    localStorage.setItem('ephi_oracle_provider', val);
+    store.set('ephi_oracle_provider', val);
     toast(`Oracle switched to ${val.toUpperCase()}`);
   };
 
   const handleTogglePurist = (val) => {
     setPuristMode(val);
-    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     settings.puristMode = val;
-    localStorage.setItem('ephi_settings', JSON.stringify(settings));
+    store.setJSON('ephi_settings', settings);
     toast(val ? 'Purist Mode Active: AI features disabled.' : 'AI features enabled.');
   };
 
@@ -100,9 +101,13 @@ export default function GrimoirePage() {
 
   const handleExport = () => {
     const backup = {};
+    const prefix = `uid_${currentUser.uid}__`;
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      backup[key] = localStorage.getItem(key);
+      if (key?.startsWith(prefix)) {
+        const cleanKey = key.replace(prefix, '');
+        backup[cleanKey] = localStorage.getItem(key);
+      }
     }
     const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
@@ -120,7 +125,9 @@ export default function GrimoirePage() {
     reader.onload = (evt) => {
       try {
         const data = JSON.parse(evt.target.result);
-        Object.entries(data).forEach(([k, v]) => localStorage.setItem(k, v));
+        Object.entries(data).forEach(([k, v]) => {
+          store.set(k, v);
+        });
         toast('Archive restored. Reloading...');
         setTimeout(() => window.location.reload(), 1500);
       } catch {
@@ -197,7 +204,7 @@ export default function GrimoirePage() {
 
   const handlePersonaChange = async (p) => {
     setPersona(p);
-    localStorage.setItem('ephi_persona', p);
+    store.set('ephi_persona', p);
     
     if (currentUser) {
       const userRef = doc(db, 'users', currentUser.uid);

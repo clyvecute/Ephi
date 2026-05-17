@@ -19,20 +19,19 @@ import EphiMarkdown from '../components/EphiMarkdown';
 import ChartWheel from '../components/AstroChartWheel.jsx';
 import { generateAspectReading } from '../lib/oracle';
 import AdSlot from '../components/AdSlot.jsx';
+import { store } from '../lib/store';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function getNatalFromStorage() {
   try {
-    const raw = localStorage.getItem('astro_natal');
-    return raw ? JSON.parse(raw) : null;
+    return store.getJSON('astro_natal');
   } catch { return null; }
 }
 
 function getAspectsFromStorage() {
   try {
-    const raw = localStorage.getItem('astro_aspects');
-    return raw ? JSON.parse(raw) : null;
+    return store.getJSON('astro_aspects');
   } catch { return null; }
 }
 
@@ -258,7 +257,7 @@ export default function ReadingPage() {
 
   // Load data on mount
   useEffect(() => {
-    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     setPuristMode(settings.puristMode || false);
 
     setConfigured(isGeminiConfigured());
@@ -291,7 +290,7 @@ export default function ReadingPage() {
         setAspects(tn || []);
         
         // Cache for this session
-        localStorage.setItem('astro_aspects', JSON.stringify({ aspects: tn, timestamp: now.toISOString() }));
+        store.setJSON('astro_aspects', { aspects: tn, timestamp: now.toISOString() });
       } catch (err) {
         console.error('Failed to calculate aspects locally:', err);
       }

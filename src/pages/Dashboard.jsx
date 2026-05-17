@@ -16,6 +16,7 @@ import HouseTransits from '../components/HouseTransits.jsx';
 import EphiMarkdown from '../components/EphiMarkdown.jsx';
 import { useToast } from '../components/Toast';
 import AdSlot from '../components/AdSlot.jsx';
+import { store } from '../lib/store';
 
 const TABS = [
   { id: 'sky',      label: 'Live Sky' },
@@ -98,7 +99,7 @@ export default function Dashboard() {
   const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
-    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     setPuristMode(settings.puristMode || false);
 
     const params = new URLSearchParams(location.search);

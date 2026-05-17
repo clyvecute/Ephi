@@ -51,11 +51,13 @@ export const DEFAULT_PREFS = {
   quietEnd:   '07:00',
 };
 
+import { store } from './store.js';
+
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 
 export function getPreferences() {
   try {
-    const saved = localStorage.getItem(PREFS_KEY);
+    const saved = store.get(PREFS_KEY);
     return saved ? { ...DEFAULT_PREFS, ...JSON.parse(saved) } : { ...DEFAULT_PREFS };
   } catch {
     return { ...DEFAULT_PREFS };
@@ -64,13 +66,13 @@ export function getPreferences() {
 
 export function savePreferences(prefs) {
   try {
-    localStorage.setItem(PREFS_KEY, JSON.stringify({ ...DEFAULT_PREFS, ...prefs }));
+    store.setJSON(PREFS_KEY, { ...DEFAULT_PREFS, ...prefs });
   } catch {}
 }
 
 export function getAlertLog() {
   try {
-    return JSON.parse(localStorage.getItem(LOG_KEY) || '[]');
+    return store.getJSON(LOG_KEY, []);
   } catch {
     return [];
   }
@@ -80,18 +82,18 @@ function appendToLog(entry) {
   try {
     const log     = getAlertLog();
     const updated = [entry, ...log].slice(0, MAX_LOG_ENTRIES);
-    localStorage.setItem(LOG_KEY, JSON.stringify(updated));
+    store.setJSON(LOG_KEY, updated);
   } catch {}
 }
 
 export function clearAlertLog() {
-  localStorage.removeItem(LOG_KEY);
+  store.remove(LOG_KEY);
 }
 
 // Track which aspect keys have already fired so we don't repeat
 function getFiredKeys() {
   try {
-    return JSON.parse(localStorage.getItem(FIRED_KEY) || '[]');
+    return store.getJSON(FIRED_KEY, []);
   } catch {
     return [];
   }
@@ -101,7 +103,7 @@ function addFiredKey(key) {
   try {
     const keys    = getFiredKeys();
     const updated = [...new Set([...keys, key])].slice(-200);
-    localStorage.setItem(FIRED_KEY, JSON.stringify(updated));
+    store.setJSON(FIRED_KEY, updated);
   } catch {}
 }
 
@@ -109,7 +111,7 @@ function removeFiredKey(key) {
   try {
     const keys    = getFiredKeys();
     const updated = keys.filter((k) => k !== key);
-    localStorage.setItem(FIRED_KEY, JSON.stringify(updated));
+    store.setJSON(FIRED_KEY, updated);
   } catch {}
 }
 

@@ -105,11 +105,11 @@ export async function generatePrecisionNatalChart(data, options = {}) {
 
 // approximateAscendant removed — use getPrecisionHouses for professional accuracy.
 
-// ─── Persistence (browser) ────────────────────────────────────────────────────
+import { store } from './store.js';
 
 export function saveNatalChart(chart) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(chart));
+    store.setJSON(STORAGE_KEY, chart);
     return true;
   } catch (e) {
     console.error('Failed to save natal chart:', e);
@@ -119,8 +119,7 @@ export function saveNatalChart(chart) {
 
 export function loadNatalChart() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
+    return store.getJSON(STORAGE_KEY);
   } catch (e) {
     console.error('Failed to load natal chart:', e);
     return null;
@@ -128,12 +127,12 @@ export function loadNatalChart() {
 }
 
 export function clearNatalChart() {
-  localStorage.removeItem(STORAGE_KEY);
+  store.remove(STORAGE_KEY);
 }
 
 export function hasNatalChart() {
   try {
-    return !!localStorage.getItem(STORAGE_KEY);
+    return !!store.get(STORAGE_KEY);
   } catch {
     return false;
   }

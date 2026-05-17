@@ -9,6 +9,7 @@ import { getNakshatra, getNavamsaSign, getVimshottariDasha } from '../lib/vedic'
 import { DASHA_MEANINGS, NAKSHATRA_MEANINGS } from '../lib/vedicInterpretations';
 import { generateVedicReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
+import { store } from '../lib/store';
 
 export default function VedicPage() {
   const [loading, setLoading] = useState(true);
@@ -25,7 +26,7 @@ export default function VedicPage() {
   const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
-    const settings = JSON.parse(localStorage.getItem('ephi_settings') || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     setPuristMode(settings.puristMode || false);
     calculateVedic();
   }, []);

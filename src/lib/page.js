@@ -13,6 +13,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import NatalForm from '@/components/NatalForm';
+import { store } from './store.js';
 
 const REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
@@ -312,15 +313,15 @@ export default function Dashboard() {
   const [filter, setFilter]               = useState('all'); // all | hard | soft | exact
   const intervalRef = useRef(null);
 
-  // Load natal from localStorage on mount
+  // Load natal from store on mount
   useEffect(() => {
-    const saved = localStorage.getItem('astro_natal');
-    if (saved) {
-      try {
-        setNatalData(JSON.parse(saved));
-      } catch {
-        localStorage.removeItem('astro_natal');
+    try {
+      const saved = store.getJSON('astro_natal');
+      if (saved) {
+        setNatalData(saved);
       }
+    } catch {
+      store.remove('astro_natal');
     }
   }, []);
 
@@ -362,8 +363,8 @@ export default function Dashboard() {
 
   function handleReset() {
     if (!confirm('Reset your natal chart data?')) return;
-    localStorage.removeItem('astro_natal');
-    localStorage.removeItem('astro_birth_form');
+    store.remove('astro_natal');
+    store.remove('astro_birth_form');
     setNatalData(null);
     setAspects([]);
     setSummary(null);
