@@ -1,4 +1,4 @@
-/**
+ /**
  * src/lib/store.js
  *
  * UID-scoped localStorage wrapper.
@@ -57,6 +57,7 @@ export const store = {
   set(key, value) {
     try {
       localStorage.setItem(this._key(key), value);
+      window.dispatchEvent(new Event('storage'));
     } catch (e) {
       console.warn('[store] localStorage full or unavailable:', e);
     }
@@ -69,6 +70,7 @@ export const store = {
   remove(key) {
     try {
       localStorage.removeItem(this._key(key));
+      window.dispatchEvent(new Event('storage'));
     } catch {}
   },
 
@@ -82,6 +84,7 @@ export const store = {
       if (k?.startsWith(prefix)) toDelete.push(k);
     }
     toDelete.forEach(k => localStorage.removeItem(k));
+    window.dispatchEvent(new Event('storage'));
   },
 
   /** Remove ALL legacy unscoped ephi/astro keys (migration helper) */

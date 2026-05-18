@@ -173,7 +173,7 @@ export default function HoraryPage() {
           chatHistory: newChat
         };
         setHistory(updatedHistory);
-        localStorage.setItem('astro_horary_history', JSON.stringify(updatedHistory));
+        store.setJSON('astro_horary_history', updatedHistory);
       }
     } catch (err) {
       setAiError(err.message || 'Failed to generate AI synthesis.');

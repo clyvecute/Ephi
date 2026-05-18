@@ -5,7 +5,7 @@
 import { useState, useEffect } from 'react';
 import { generatePrecisionNatalChart } from '../lib/natal.js';
 import { auth, db } from '../lib/firebase';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { store } from '../lib/store';
 
@@ -38,21 +38,29 @@ export function useNatal() {
   // Sync with Firestore if logged in
   useEffect(() => {
     let unsubscribe = () => {};
-    const unregisterAuth = onAuthStateChanged(auth, (user) => {
+    const unregisterAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Subscribe to cloud doc
-        const ref = doc(db, 'users', user.uid, 'data', 'natal');
-        unsubscribe = onSnapshot(ref, (snap) => {
-          if (snap.exists()) {
-            const data = snap.data();
-            const hasSun = data?.positions?.Sun || data?.positions?.sun;
-            // Only update if it's a valid chart (ignore soft-deletes)
-            if (hasSun != null && !data._deleted) {
-              setNatalChart(data);
-              store.setJSON(STORAGE_KEY, data);
+        try {
+          await user.getIdToken(true);
+          const ref = doc(db, 'users', user.uid, 'data', 'natal');
+          unsubscribe = onSnapshot(ref, (snap) => {
+            if (snap.exists()) {
+              const data = snap.data();
+              const hasSun = data?.positions?.Sun || data?.positions?.sun;
+              // Only update if it's a valid chart (ignore soft-deletes)
+              if (hasSun != null && !data._deleted) {
+                setNatalChart(data);
+                store.setJSON(STORAGE_KEY, data);
+              }
             }
-          }
-        });
+          }, (err) => {
+            if (err.code !== 'permission-denied') {
+              console.error('Natal sync error:', err);
+            }
+          });
+        } catch (e) {
+          console.error('Auth sync error in useNatal:', e);
+        }
       } else {
         unsubscribe();
       }
@@ -98,7 +106,11 @@ export function useNatal() {
     setNatalChart(null);
     if (auth.currentUser) {
       const ref = doc(db, 'users', auth.currentUser.uid, 'data', 'natal');
-      await setDoc(ref, { _deleted: true }); // Soft delete or clear
+      try {
+        await deleteDoc(ref);
+      } catch (e) {
+        console.error('Failed to clear cloud natal:', e);
+      }
     }
   }
 

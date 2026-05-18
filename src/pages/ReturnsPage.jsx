@@ -49,7 +49,7 @@ export default function ReturnsPage() {
         const moonLon = natal.positions.moon.longitude ?? natal.positions.moon;
         result = await findLunarReturn(moonLon, new Date(), isSidereal);
       } else if (mode === 'progressed') {
-        const birthDate = new Date(natal.meta.date + ' ' + natal.meta.time);
+        const birthDate = new Date(natal.meta.date + 'T' + natal.meta.time);
         const natalAsc = natal.ascendant?.longitude ?? null;
         result = await getSecondaryProgressions(birthDate, new Date(), natalAsc, isSidereal);
         result.type = 'Secondary Progression';

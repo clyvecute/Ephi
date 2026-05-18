@@ -10,7 +10,7 @@ export default function BaziPage() {
   const bazi = useMemo(() => {
     if (!natalChart) return null;
     const { meta } = natalChart;
-    const d = new Date(meta.date + ' ' + meta.time);
+    const d = new Date(meta.date + 'T' + meta.time);
     return calculateBaZi(d, meta.gender || 'male');
   }, [natalChart]);
 

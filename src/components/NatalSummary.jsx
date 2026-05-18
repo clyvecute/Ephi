@@ -79,7 +79,20 @@ const HOUSE_THEMES = [
 import { calculateBaZi } from '../lib/bazi.js';
 
 export default function NatalSummary({ chart, onClear }) {
-  if (!chart) return null;
+  if (!chart) {
+    return (
+      <div className="card" style={{ padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1rem', opacity: 0.6, animation: 'ephi-pulse-glow 2s infinite ease-in-out' }}>
+        <div style={{ height: '32px', width: '40%', background: 'var(--bg-secondary)', borderRadius: '8px' }} />
+        <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'var(--bg-secondary)' }} />
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.5rem', justifyContent: 'center' }}>
+            <div style={{ height: '16px', width: '100%', background: 'var(--bg-secondary)', borderRadius: '4px' }} />
+            <div style={{ height: '16px', width: '80%', background: 'var(--bg-secondary)', borderRadius: '4px' }} />
+          </div>
+        </div>
+      </div>
+    );
+  }
   const { meta, positions } = chart;
   const isSidereal = !!meta.sidereal;
   const ascSignIndex = chart.risingSign ? SIGNS.indexOf(chart.risingSign) : null;

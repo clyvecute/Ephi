@@ -46,9 +46,11 @@ function PageLoader() {
  * Enforces login before accessing specific features.
  */
 function ProtectedRoute({ children }) {
-  const { currentUser, loading } = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true' 
+  const auth = useAuth();
+  const bypassAuth = import.meta.env.VITE_DEV_BYPASS_AUTH === 'true';
+  const { currentUser, loading } = bypassAuth 
     ? { currentUser: { uid: 'dev' }, loading: false } 
-    : useAuth();
+    : auth;
   const location = useLocation();
 
   if (loading) return <PageLoader />;
@@ -111,7 +113,7 @@ export default function App() {
       } catch {}
     }
 
-    // 3. Apply Dark Theme for specific routes
+    // 4. Apply Dark Theme for specific routes
     if (location.pathname === '/admin' || location.pathname === '/sys-archive') {
       document.body.classList.add('dark-theme');
     } else {

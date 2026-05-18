@@ -18,10 +18,6 @@ import { store } from './store.js';
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
-const API_KEY   = import.meta.env.VITE_GEMINI_API_KEY;
-// Set VITE_USE_PROXY=true in .env to route through the Vercel secure proxy
-const USE_PROXY = import.meta.env.VITE_USE_PROXY === 'true';
-// Automatically resolved: works locally and in production
 const PROXY_URL = '/api/oracle';
 
 const DEFAULT_MAX_TOKENS = 1024;
@@ -356,127 +352,41 @@ Tone: psychological depth + practical grounding + spiritual awareness. Speak dir
  */
 async function callGemini(prompt, maxTokens = DEFAULT_MAX_TOKENS, fileUri = null, fileUris = null) {
   // ── Proxy mode (production): route through Vercel /api/oracle ──
-  if (USE_PROXY) {
-    let headers = { 'Content-Type': 'application/json' };
+  let headers = { 'Content-Type': 'application/json' };
 
-    // Attach Firebase auth token if user is logged in
-    try {
-      const { auth } = await import('./firebase');
-      if (auth.currentUser) {
-        const token = await auth.currentUser.getIdToken();
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-    } catch { /* non-auth environments */ }
-
-    try {
-      const res = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ prompt, fileUri, fileUris }),
-      });
-
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        
-        // If we are in DEV mode and the proxy is missing (404), fallback to direct call
-        if (res.status === 404 && import.meta.env.DEV && API_KEY) {
-          console.warn('[Gemini] Proxy not found in dev mode. Falling back to direct API call.');
-          return await callDirect(prompt, maxTokens, fileUri);
-        }
-
-        if (res.status === 404) {
-          throw new Error('Oracle Proxy not found (404). Use "vercel dev" or set VITE_USE_PROXY=false.');
-        }
-        throw new Error(err?.error || `Proxy error ${res.status}: ${res.statusText}`);
-      }
-
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!text) throw new Error('Oracle returned an empty response.');
-      return text.trim();
-    } catch (err) {
-      // If the fetch itself fails (e.g. network error) and we are in DEV, try direct
-      if (import.meta.env.DEV && API_KEY) {
-        console.warn('[Gemini] Proxy request failed. Falling back to direct API call:', err.message);
-        return await callDirect(prompt, maxTokens, fileUri);
-      }
-      throw err;
+  // Attach Firebase auth token if user is logged in
+  try {
+    const { auth } = await import('./firebase');
+    if (auth.currentUser) {
+      const token = await auth.currentUser.getIdToken();
+      headers['Authorization'] = `Bearer ${token}`;
     }
-  }
+  } catch { /* non-auth environments */ }
 
-  return await callDirect(prompt, maxTokens, fileUri, fileUris);
-}
-
-/**
- * Direct call logic (extracted for reuse in fallback)
- */
-async function callDirect(prompt, maxTokens, fileUri, fileUris) {
-  if (!API_KEY) {
-    throw new Error('Gemini API key not found. Add VITE_GEMINI_API_KEY to your .env file.');
-  }
-
-  const runCall = async (modelName) => {
-    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${API_KEY}`;
-    const parts = [{ text: prompt }];
-    if (fileUris && Array.isArray(fileUris)) {
-      for (const uri of fileUris) {
-        if (uri && uri !== 'pending_upload') {
-          parts.push({
-            fileData: {
-              fileUri: uri,
-              mimeType: uri.endsWith('.pdf') ? 'application/pdf' : 'text/plain',
-            },
-          });
-        }
-      }
-    } else if (fileUri) {
-      parts.push({
-        fileData: {
-          fileUri,
-          mimeType: fileUri.endsWith('.pdf') ? 'application/pdf' : 'text/plain',
-        },
-      });
-    }
-
-    const body = {
-      contents: [{ parts }],
-      generationConfig: { temperature: TEMPERATURE, topP: 0.9, topK: 40 },
-      safetySettings: [
-        { category: 'HARM_CATEGORY_HARASSMENT',        threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_HATE_SPEECH',       threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
-        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
-      ],
-    };
-
-    const res = await fetch(endpoint, {
+  try {
+    const res = await fetch(PROXY_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+      headers,
+      body: JSON.stringify({ prompt, fileUri, fileUris }),
     });
 
-    if (res.status === 404) return { error: 404 };
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
-      throw new Error(err?.error?.message || `Gemini API error ${res.status}`);
+
+      if (res.status === 404) {
+        throw new Error('Oracle Proxy not found (404). Server endpoint is down.');
+      }
+      throw new Error(err?.error || `Proxy error ${res.status}: ${res.statusText}`);
     }
-    return res.json();
-  };
 
-  // Start with Flash for speed and higher free-tier availability
-  let data = await runCall('gemini-1.5-flash-latest');
-  
-  // If 404, try the pro/preview models
-  if (data?.error === 404) data = await runCall('gemini-1.5-pro-latest');
-  if (data?.error === 404) data = await runCall('gemini-pro'); 
-  
-  if (data?.error === 404) throw new Error('Gemini model not found (404). Check your API model availability.');
-
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) throw new Error('Gemini returned an empty response.');
-  const finishReason = data?.candidates?.[0]?.finishReason;
-  if (finishReason === 'SAFETY') throw new Error('Response blocked by Gemini safety filters.');
-  return text.trim();
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error('Oracle returned an empty response.');
+    return text.trim();
+  } catch (err) {
+    console.error('[Gemini] Proxy request failed:', err.message);
+    throw err;
+  }
 }
 
 // ─── Public API ───────────────────────────────────────────────────────────────

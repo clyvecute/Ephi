@@ -10,10 +10,17 @@ import './index.css';
 
 registerServiceWorker();
 
+// StrictMode is disabled in dev to prevent Firestore onSnapshot streams
+// from being torn down and restarted twice (Strict Mode mounts → unmounts →
+// remounts every component), which causes false permission-denied errors
+// when the Firestore watch stream restarts without a fresh auth credential.
+// StrictMode is still active in production builds for safety.
+const AppTree = (
+  <BrowserRouter>
+    <App />
+  </BrowserRouter>
+);
+
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </StrictMode>
+  import.meta.env.PROD ? <StrictMode>{AppTree}</StrictMode> : AppTree
 );

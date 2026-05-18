@@ -22,6 +22,10 @@ export default function AdminPage() {
       if (snap.exists()) {
         setAdsEnabled(snap.data().adsEnabled !== false);
       }
+    }, (err) => {
+      if (err.code !== 'permission-denied') {
+        console.warn('AdminPage sync error:', err);
+      }
     });
 
     const fetchData = async () => {

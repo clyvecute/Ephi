@@ -20,6 +20,10 @@ export default function AdSlot({ type = 'banner', slotId, style }) {
         if (snap.exists()) {
           setAdsEnabled(snap.data().adsEnabled !== false);
         }
+      }, (err) => {
+        if (err.code !== 'permission-denied') {
+          console.warn('AdSlot sync error:', err);
+        }
       });
       return () => unsub();
     } catch (err) {

@@ -51,8 +51,8 @@ export default function NavBar() {
       setPuristMode(settings.puristMode || false);
     }
     refresh();
-    const t = setInterval(refresh, 60_000);
-    return () => clearInterval(t);
+    window.addEventListener('storage', refresh);
+    return () => window.removeEventListener('storage', refresh);
   }, [location]);
 
   const tabs = [
