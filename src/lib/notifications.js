@@ -10,7 +10,6 @@
 //     getPreferences, savePreferences, getAlertLog
 //   } from '@/lib/notifications';
 
-import { getPlanetPositions } from './ephemeris.js';
 import { getActiveAspects   } from './aspects.js';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -275,7 +274,8 @@ async function runAspectCheck() {
   if (isQuietHours(prefs)) return;
 
   try {
-    const currentPositions = getPlanetPositions(new Date());
+    const { getPrecisionPositions } = await import('./swe.js');
+    const currentPositions = await getPrecisionPositions(new Date());
     const aspects = getActiveAspects(currentPositions, natalPositions, {
       transitPlanets: prefs.transitPlanets,
       natalPlanets:   prefs.natalPlanets,
