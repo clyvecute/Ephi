@@ -15,35 +15,42 @@ export function useTransits(natalChart = null, intervalMs = DEFAULT_INTERVAL_MS,
   const [transitToNatal, setTransitToNatal] = useState([]);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [tick, setTick] = useState(0);
+  const [error, setError] = useState(null);
   const intervalRef = useRef(null);
 
   const refresh = useCallback(async () => {
-    const now = baseDate ? new Date(baseDate) : new Date();
-    const options = { sidereal: !!natalChart?.meta?.sidereal };
-    const positions = await getPlanetPositions(now, null, options);
-    
-    // getActiveAspects without natal chart gives sky aspects
-    let aspects = getActiveAspects(positions);
-    aspects = aspects.map(a => {
-      const interp = getInterpretation(a.transitPlanet, a.aspectName, a.natalPlanet) || {};
-      return { ...a, interp, keywords: interp.keywords || [], description: interp.core || null };
-    });
-
-    setTransitPositions(positions);
-    setSkyAspects(aspects);
-    setLastUpdated(now);
-
-    if (natalChart?.positions) {
-      // getActiveAspects with natal chart gives transits to natal
-      let tn = getActiveAspects(positions, natalChart.positions);
-      tn = tn.map(a => {
+    setError(null);
+    try {
+      const now = baseDate ? new Date(baseDate) : new Date();
+      const options = { sidereal: !!natalChart?.meta?.sidereal };
+      const positions = await getPlanetPositions(now, null, options);
+      
+      // getActiveAspects without natal chart gives sky aspects
+      let aspects = getActiveAspects(positions);
+      aspects = aspects.map(a => {
         const interp = getInterpretation(a.transitPlanet, a.aspectName, a.natalPlanet) || {};
         return { ...a, interp, keywords: interp.keywords || [], description: interp.core || null };
       });
-      setTransitToNatal(tn);
-    }
 
-    setTick(t => t + 1);
+      setTransitPositions(positions);
+      setSkyAspects(aspects);
+      setLastUpdated(now);
+
+      if (natalChart?.positions) {
+        // getActiveAspects with natal chart gives transits to natal
+        let tn = getActiveAspects(positions, natalChart.positions);
+        tn = tn.map(a => {
+          const interp = getInterpretation(a.transitPlanet, a.aspectName, a.natalPlanet) || {};
+          return { ...a, interp, keywords: interp.keywords || [], description: interp.core || null };
+        });
+        setTransitToNatal(tn);
+      }
+
+      setTick(t => t + 1);
+    } catch (err) {
+      console.error('Transit calculation error:', err);
+      setError(err);
+    }
   }, [natalChart, baseDate]);
 
   // Initial fetch + interval
@@ -64,5 +71,6 @@ export function useTransits(natalChart = null, intervalMs = DEFAULT_INTERVAL_MS,
     lastUpdated,
     tick,
     refresh,
+    error,
   };
 }

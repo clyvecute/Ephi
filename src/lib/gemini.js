@@ -563,34 +563,71 @@ Avoid clichés and generic horoscopes. The reading should feel bespoke, sophisti
  * @param {Object} params.moonNakshatra
  * @returns {Promise<{ text: string, timestamp: string }>}
  */
-export async function generateVedicReading({ name, mahadasha, antardasha, ascNakshatra, moonNakshatra }) {
+export async function generateVedicReading({
+  name, mahadasha, antardasha, pratyantardasha,
+  mahaEnd, antarEnd,
+  ascNakshatra, moonNakshatra,
+  lagnaSign, moonSign, sunSign,
+  planetHouses,
+  planetSigns,
+  planetDignities,
+  panchanga,
+}) {
   const libraryBooks = getBookForTool('vedic');
-  const validUris = libraryBooks.map(b => b.uri).filter(u => u !== 'pending_upload');
-  let prompt = `You are a world-class expert Vedic Astrologer (Jyotishi) steeped in ancient Indian astrological tradition (Parashara). You provide deep, philosophical, and highly actionable insights based on the sidereal zodiac and lunar mansions.
-  
+  const validUris    = libraryBooks.map(b => b.uri).filter(u => u !== 'pending_upload');
+
+  const placements = Object.entries(planetHouses || {})
+    .map(([p, h]) => {
+      const sign    = planetSigns?.[p]    || '';
+      const dignity = planetDignities?.[p] ? ` [${planetDignities[p]}]` : '';
+      return `${p.charAt(0).toUpperCase()+p.slice(1)}: House ${h} (${sign})${dignity}`;
+    })
+    .join('\n  ');
+
+  const prompt = `You are a world-class Jyotishi trained in the Parashara tradition. You deliver precise, philosophically rich, and practically actionable Vedic readings grounded in classical texts.
+
 ${libraryBooks.length > 0 ? `CRITICAL: Base your analysis on the principles in the attached documents (${libraryBooks.map(b=>b.name).join(', ')}).` : ''}
 
-PROFILE:
+═══ BIRTH CHART (SIDEREAL / LAHIRI) ═══
 Name: ${name || 'The native'}
-Ascendant Nakshatra (Lagna): ${ascNakshatra?.name || 'Unknown'}
-Moon Nakshatra (Chandra): ${moonNakshatra?.name || 'Unknown'}
-Current Vimshottari Dasha Timeline: ${mahadasha} Mahadasha, ${antardasha} Antardasha
+Lagna (Ascendant): ${lagnaSign || 'Unknown'} — Nakshatra: ${ascNakshatra?.name || 'Unknown'} (Pada ${ascNakshatra?.pada || '?'})
+Moon: ${moonSign || 'Unknown'} — Nakshatra: ${moonNakshatra?.name || 'Unknown'} (Pada ${moonNakshatra?.pada || '?'})
+Sun: ${sunSign || 'Unknown'}
 
-Write a comprehensive, sophisticated Jyotish reading (around 400-600 words). Avoid generic horoscopes. Use classical Vedic concepts (karma, dharma, moksha, gunas) but apply them to a highly practical, modern psychological context.
+Planetary Placements:
+  ${placements || 'Not provided'}
 
-Structure your response with the exact following markdown headers:
-1. **The Soul's Architecture (Lagna & Chandra)**: Explain the fundamental nature of their soul's vehicle (Ascendant Nakshatra) and their emotional mind/perceptive lens (Moon Nakshatra). How do these two specific lunar mansions interact? What is their core evolutionary drive?
-2. **The Ripening Karma (Current Dasha)**: Analyze the overarching karmic theme of their ${mahadasha} Mahadasha, and specifically how the ${antardasha} sub-period is focusing that energy *right now*. What specific area of life is being activated?
-3. **Spiritual Prescriptions (Upaya)**: Suggest 3 precise, practical actions, mindset shifts, or disciplines they must adopt to harmonize with the turbulent or expansive energies of their current Dasha cycle.
+═══ CURRENT DASHA TIMELINE ═══
+Mahadasha:       ${mahadasha} (ends ${mahaEnd || 'unknown'})
+Antardasha:      ${antardasha} (ends ${antarEnd || 'unknown'})
+Pratyantardasha: ${pratyantardasha || 'Not calculated'}
 
-Use formatting like **bold** text and bullet points appropriately. Address the user directly as "you" in an editorial, empowering, yet deeply mystical tone.`;
+${panchanga ? `═══ TODAY'S PANCHANGA ═══
+Tithi: ${panchanga.tithi.name} (${panchanga.tithi.paksha} Paksha)
+Moon Nakshatra today: ${panchanga.nakshatra.name}
+Yoga: ${panchanga.yoga.name}
+` : ''}
 
-  const text = await callGemini(prompt, 1000, null, validUris);
+Write a sophisticated, non-generic Jyotish reading (~500–700 words). Use classical Vedic concepts (dharma, karma, gunas, yogas, upaya). Be specific to their actual placements — do not give generic Sun/Moon sign readings.
 
-  return {
-    text,
-    timestamp: new Date().toISOString(),
-  };
+Structure with these exact markdown headers:
+
+**1. The Natal Blueprint (Lagna, Moon & Key Placements)**
+Analyze the Lagna Nakshatra as the vehicle of the soul, the Moon Nakshatra as the mind's lens, and 2–3 key planetary placements (especially any exalted, debilitated, or yogakaraka planets). What is the fundamental life orientation this chart creates?
+
+**2. The Current Karmic Season (Dasha Analysis)**
+Analyze the ${mahadasha} Mahadasha as the overarching karmic theme. Specifically, how does the ${antardasha} Antardasha (sub-lord) focus and filter that energy right now? Which houses do these planets rule in this chart — and what domains of life are being activated? If Pratyantardasha is provided, briefly note its flavor.
+
+**3. Key Yogas & Chart Strengths**
+Identify any notable Raj Yogas, Dhana Yogas, or Viparita Raj Yogas visible in the chart based on house lord positions. Note any planets in their own sign or exaltation.
+
+**4. Practical Prescriptions (Upaya)**
+Suggest 3 specific, classical remedies: one Mantra (with the Sanskrit name), one Gemstone/color/metal, and one behavioral/lifestyle practice aligned to strengthen the current Dasha lord and support their chart's needs.
+
+Address the user as "you." Use an authoritative, warm, mystical-but-grounded tone.`;
+
+  const text = await callGemini(prompt, 1200, null, validUris);
+  return { text, timestamp: new Date().toISOString() };
 }
 
 /**

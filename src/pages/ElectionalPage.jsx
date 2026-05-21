@@ -6,8 +6,24 @@ import { UiIcon } from '../components/EphiIcons';
 import { useToast } from '../components/Toast';
 import EphiMarkdown from '../components/EphiMarkdown';
 import ChartWheel from '../components/AstroChartWheel.jsx';
-import { generateReading } from '../lib/oracle';
+import { generateReading } from '../lib/gemini.js';
 import { useAuth } from '../contexts/AuthContext';
+import { getPanchanga, getHora, getChoghadiya, getKalaStatus } from '../lib/jyotish/panchanga.js';
+import { scoreMuhurta } from '../lib/jyotish/muhurta.js';
+import { getSunriseSunset, getPrecisionPositions } from '../lib/swe.js';
+
+async function scoreJyotishMoment(date, lat, lon, sunriseMins, sunsetMins, purpose, natalData) {
+  const positions = await getPrecisionPositions(date, { sidereal: true });
+  const sunLon    = positions.sun.longitude;
+  const moonLon   = positions.moon.longitude;
+
+  const panchanga  = getPanchanga(sunLon, moonLon, date);
+  const hora       = getHora(date, sunriseMins, sunsetMins);
+  const choghadiya = getChoghadiya(date, sunriseMins, sunsetMins);
+  const kala       = getKalaStatus(date, sunriseMins, sunsetMins);
+
+  return scoreMuhurta(panchanga, hora, choghadiya, kala, purpose, natalData);
+}
 
 const LOGIC_MODES = [
   { id: 'general',  label: 'General Vitality', icon: 'fourstar', color: 'var(--accent)', desc: 'Optimizing overall health, energy level, and daily tasks.' },
@@ -139,10 +155,17 @@ export default function ElectionalPage() {
         const positions = await getPlanetPositions(testDate);
         const momentScore = scoreMoment(positions, mode, natalChart);
 
+        // Jyotish Muhurta
+        const lat = natalChart?.meta?.lat || 0;
+        const lon = natalChart?.meta?.lon || 0;
+        const { sunriseMins, sunsetMins } = await getSunriseSunset(testDate, lat, lon);
+        const jyotishScore = await scoreJyotishMoment(testDate, lat, lon, sunriseMins, sunsetMins, mode, natalChart);
+
         output.push({
           date: testDate,
           positions,
-          ...momentScore
+          ...momentScore,
+          jyotish: jyotishScore
         });
       }
 
@@ -225,7 +248,9 @@ Focus Area: ${currentModeMeta.label}
 Target Date: ${dateStr}
 Custom Launch Intent: "${userQuestion || 'General daily task launch'}"
 Ephi Potency Score: ${potencyScore}%
+Jyotish Muhurta Score: ${selectedMoment.jyotish.score}%
 Core Scoring Assets: ${assets || 'Neutral baseline'}
+Jyotish Factors: ${selectedMoment.jyotish.reasons.map(r => r.factor).join(', ') || 'Neutral'}
 
 PLANETARY COORDINATES:
 ${placementsText}
@@ -489,10 +514,18 @@ CRITICAL PRESENTATION INSTRUCTIONS:
                       {selectedMoment.date.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </p>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Score Strength</span>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 900, color: selectedMoment.score > 70 ? 'var(--harmonic)' : 'var(--text-primary)' }}>
-                      {selectedMoment.score}%
+                  <div style={{ display: 'flex', gap: '2rem', textAlign: 'right' }}>
+                    <div>
+                      <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Western Score</span>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 900, color: selectedMoment.score > 70 ? 'var(--harmonic)' : 'var(--text-primary)' }}>
+                        {selectedMoment.score}%
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>Jyotish Muhurta</span>
+                      <div style={{ fontSize: '1.75rem', fontWeight: 900, color: selectedMoment.jyotish.score > 70 ? 'var(--harmonic)' : 'var(--text-primary)' }}>
+                        {selectedMoment.jyotish.score}%
+                      </div>
                     </div>
                   </div>
                 </div>

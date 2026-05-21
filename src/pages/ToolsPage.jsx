@@ -28,6 +28,22 @@ export default function ToolsPage() {
       icon: 'sparkle' 
     },
     { 
+      path: '/transit-calendar', 
+      name: 'Transit Calendar', 
+      tag: 'Intermediate',
+      desc: 'Calculates the exact minute transits cross into orbs or become exact against your natal coordinates. Day-grouped timeline mapping out all planetary opportunities and warnings.',
+      useCase: 'Best for: Timing big initiatives and spotting major energetic windows.',
+      icon: 'star' 
+    },
+    { 
+      path: '/progressions', 
+      name: 'Secondary Progressions', 
+      tag: 'Advanced',
+      desc: 'One symbolic day of planetary motion equals one year of human life. Tracks the slow maturation and shifting priorities of your natal soul blueprint across your lifespan.',
+      useCase: 'Best for: Understanding long-term internal cycles and soul evolution.',
+      icon: 'sparkle' 
+    },
+    { 
       path: '/bazi', 
       name: 'Four Pillars (Bazi)', 
       tag: 'Specialist',

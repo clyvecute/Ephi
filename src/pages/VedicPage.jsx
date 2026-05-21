@@ -5,9 +5,10 @@ import VedicChart from '../components/VedicChart';
 import { getPlanetPositions, PLANET_META, ALL_PLANETS, getZodiacInfo } from '../lib/ephemeris';
 import { birthDataToDate, loadNatalChart } from '../lib/natal';
 import { getPrecisionHouses } from '../lib/swe';
-import { getNakshatra, getNavamsaSign, getVimshottariDasha } from '../lib/vedic';
+import { getNakshatra, getNavamsaSign, getVimshottariDasha, SIGNS, getBhavaLord, getPlanetDignity } from '../lib/vedic';
+import { getPanchanga } from '../lib/jyotish/panchanga.js';
 import { DASHA_MEANINGS, NAKSHATRA_MEANINGS } from '../lib/vedicInterpretations';
-import { generateVedicReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
+import { generateVedicReading, isGeminiConfigured } from '../lib/gemini.js';
 import EphiMarkdown from '../components/EphiMarkdown';
 import { store } from '../lib/store';
 
@@ -57,6 +58,7 @@ export default function VedicPage() {
       const d1Planets = [];
       const d9Planets = [];
       const nakshatras = {};
+      const planetHouses = {};
 
       // Add Ascendant (Lagna)
       const ascSignIdx = Math.floor(ascLon / 30);
@@ -89,6 +91,9 @@ export default function VedicPage() {
         
         // D-1 (Rasi) calculation
         const d1SignIdx = Math.floor(lon / 30);
+        const houseNum = (d1SignIdx - ascSignIdx + 12) % 12 + 1;
+        planetHouses[key] = houseNum;
+
         d1Planets.push({
           key,
           label: meta.label,
@@ -114,14 +119,19 @@ export default function VedicPage() {
 
       // Calculate Current Vimshottari Dasha
       const moonLon = rawPositions.moon;
+      const sunLon = rawPositions.sun;
       const dasha = getVimshottariDasha(moonLon, birthDate, new Date());
+      const panchanga = getPanchanga(sunLon, moonLon, new Date());
 
       setVedicData({
         d1Planets,
         d9Planets,
         nakshatras,
         ascSignIndex: ascSignIdx,
-        ascNavamsaIndex: ascNavamsa.signIndex
+        ascNavamsaIndex: ascNavamsa.signIndex,
+        planetHouses,
+        panchanga,
+        rawPositions
       });
 
       setDashaData(dasha);
@@ -147,8 +157,26 @@ export default function VedicPage() {
         name: natalName,
         mahadasha: dashaData.mahadasha,
         antardasha: dashaData.antardasha,
+        pratyantardasha: dashaData.pratyantardasha,
+        mahaEnd: dashaData.mahaEnd,
+        antarEnd: dashaData.antarEnd,
         ascNakshatra: vedicData.nakshatras['asc'],
-        moonNakshatra: vedicData.nakshatras['moon']
+        moonNakshatra: vedicData.nakshatras['moon'],
+        lagnaSign: SIGNS[vedicData.ascSignIndex],
+        moonSign: SIGNS[Math.floor((vedicData.rawPositions.moon ?? 0) / 30)],
+        sunSign: SIGNS[Math.floor((vedicData.rawPositions.sun ?? 0) / 30)],
+        planetHouses: vedicData.planetHouses,
+        planetSigns: Object.fromEntries(
+          Object.entries(vedicData.planetHouses).map(([p]) => [
+            p, SIGNS[Math.floor((vedicData.rawPositions[p] ?? 0) / 30)]
+          ])
+        ),
+        planetDignities: Object.fromEntries(
+          Object.entries(vedicData.planetHouses).map(([p]) => [
+            p, getPlanetDignity(p, SIGNS[Math.floor((vedicData.rawPositions[p] ?? 0) / 30)])
+          ])
+        ),
+        panchanga: vedicData.panchanga
       });
       setAiReading(result.text);
     } catch (err) {
@@ -221,6 +249,39 @@ export default function VedicPage() {
 
         {/* Right Column: Analytics & Interpretations */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          <div className="card" style={{ padding: '2rem' }}>
+            <div className="form-label" style={{ marginBottom: '1.5rem' }}>Bhava (House) Occupancy</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
+              {[1,2,3,4,5,6,7,8,9,10,11,12].map(h => {
+                const signIdx = (vedicData.ascSignIndex + h - 1) % 12;
+                const signName = SIGNS[signIdx];
+                const lord = getBhavaLord(SIGNS[vedicData.ascSignIndex], h);
+                const occupants = Object.entries(vedicData.planetHouses)
+                  .filter(([_, house]) => house === h)
+                  .map(([p]) => p);
+
+                return (
+                  <div key={h} className="ephi-card" style={{ padding: '1rem' }}>
+                    <div style={{ fontWeight: 'bold', color: 'var(--accent)', marginBottom: '0.25rem' }}>House {h}</div>
+                    <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '0.5rem' }}>
+                      {signName} • Lord: <span style={{textTransform:'capitalize'}}>{lord}</span>
+                    </div>
+                    <div style={{ fontSize: '0.9rem' }}>
+                      {occupants.length > 0 ? (
+                        occupants.map(p => (
+                          <span key={p} style={{ display: 'inline-block', marginRight: '0.5rem', textTransform: 'capitalize' }}>
+                            {PLANET_META[p]?.label || p}
+                          </span>
+                        ))
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>Empty</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
           
           {dashaData && dashaData.mahadasha && (
             <div className="glass-panel" style={{ padding: '1.5rem', borderLeft: '4px solid var(--accent)' }}>

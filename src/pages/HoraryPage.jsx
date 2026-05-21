@@ -6,8 +6,14 @@ import ChartWheel from '../components/AstroChartWheel.jsx';
 import { generateHoraryReading, continueHoraryReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 import { store } from '../lib/store';
+import { analyzePrashna } from '../lib/jyotish/prashna.js';
+import { getPrecisionPositions, getPrecisionHouses } from '../lib/swe.js';
+import { getPanchanga } from '../lib/jyotish/panchanga.js';
 
 export default function HoraryPage() {
+  const [mode, setMode] = useState('western'); // 'western' | 'prashna'
+  const [prashnaChart, setPrashnaChart] = useState(null);
+
   const [question, setQuestion] = useState('');
   const [city, setCity] = useState('');
   const [exactCoords, setExactCoords] = useState(null);
@@ -92,6 +98,9 @@ export default function HoraryPage() {
     setError('');
     setAiReading(null);
     setAiError('');
+    setChart(null);
+    setJudgment(null);
+    setPrashnaChart(null);
     setChatHistory([]);
     setFollowUpMsg('');
 
@@ -114,6 +123,43 @@ export default function HoraryPage() {
             lng = natal.meta.lng;
           }
         } catch {}
+      }
+
+      if (mode === 'prashna') {
+        const now = new Date();
+        const positions = await getPrecisionPositions(now, { sidereal: true });
+        const houses = await getPrecisionHouses(now, lat, lng, 'P', { sidereal: true });
+        const sunLon = positions.sun.longitude;
+        const moonLon = positions.moon.longitude;
+        const panchanga = getPanchanga(sunLon, moonLon, now);
+
+        const prashnaResult = analyzePrashna({
+          question,
+          siderealPositions: positions,
+          lagnaLongitude: houses.ascendant,
+          panchanga,
+          questionTime: now,
+        });
+
+        setPrashnaChart(prashnaResult);
+        
+        const newHistoryItem = {
+          id: Date.now(),
+          mode: 'prashna',
+          question,
+          city,
+          date: now,
+          prashnaChart: prashnaResult,
+          verdict: prashnaResult.verdict,
+          chatHistory: []
+        };
+        const newHistory = [newHistoryItem, ...history].slice(0, 50);
+        setHistory(newHistory);
+        setCurrentHistoryIndex(0);
+        store.setJSON('astro_horary_history', newHistory);
+
+        setLoading(false);
+        return;
       }
 
       const castedChart = await castHoraryChart(question, new Date(), lat, lng);
@@ -223,9 +269,18 @@ export default function HoraryPage() {
   const handleSelectHistory = (item, index) => {
     setQuestion(item.question);
     setCity(item.city || '');
-    setChart(item.chart);
-    setJudgment(item.judgment);
-    setStrictures(item.strictures || []);
+    setMode(item.mode || 'western');
+    if (item.mode === 'prashna') {
+      setPrashnaChart(item.prashnaChart);
+      setChart(null);
+      setJudgment(null);
+      setStrictures([]);
+    } else {
+      setPrashnaChart(null);
+      setChart(item.chart);
+      setJudgment(item.judgment);
+      setStrictures(item.strictures || []);
+    }
     setAiReading(item.aiReading || null);
     setChatHistory(item.chatHistory || []);
     setCurrentHistoryIndex(index);
@@ -250,6 +305,18 @@ export default function HoraryPage() {
         <p className="page-subtitle">
           Ask a specific, meaningful question. Traditional calculations yield direct indicators.
         </p>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+        {['western','prashna'].map(m => (
+          <button key={m} onClick={() => { setMode(m); setChart(null); setPrashnaChart(null); }} className="pill" style={{
+            background: mode === m ? 'var(--accent)' : 'var(--surface-sunken)',
+            color: mode === m ? '#fff' : 'var(--text-primary)',
+            border: 'none', cursor: 'pointer', textTransform: 'capitalize'
+          }}>
+            {m === 'western' ? 'Lilly (Western)' : 'Prashna (Jyotish)'}
+          </button>
+        ))}
       </div>
 
       <form onSubmit={handleCast}>
@@ -310,7 +377,50 @@ export default function HoraryPage() {
         </div>
       </form>
 
-      {judgment && chart && (
+      {mode === 'prashna' && prashnaChart && (
+        <div className="card" style={{ padding: '2.5rem' }}>
+          <div className="horary-verdict-bar">
+            <span className="pill" style={{ 
+              background: getVerdictColor(prashnaChart.verdict) + '15', 
+              borderColor: getVerdictColor(prashnaChart.verdict), 
+              color: getVerdictColor(prashnaChart.verdict) 
+            }}>
+              {prashnaChart.verdict.toUpperCase()}
+            </span>
+            <span className="horary-verdict-label">Confidence: {prashnaChart.confidence}</span>
+          </div>
+          <p className="horary-verdict-summary">{prashnaChart.summary}</p>
+          <div className="horary-sig-grid">
+            <div className="horary-sig-card">
+              <div className="horary-sig-label">Lagna Lord (You)</div>
+              <div className="horary-sig-planet" style={{ textTransform: 'capitalize' }}>
+                <PlanetIcon name={prashnaChart.lagnaLord} size={18} style={{ marginRight: 6 }}/>
+                {prashnaChart.lagnaLord}
+              </div>
+            </div>
+            <div className="horary-sig-card">
+              <div className="horary-sig-label">Target Lord (Topic)</div>
+              <div className="horary-sig-planet" style={{ textTransform: 'capitalize' }}>
+                <PlanetIcon name={prashnaChart.targetLord} size={18} style={{ marginRight: 6 }}/>
+                {prashnaChart.targetLord}
+              </div>
+              <div className="horary-sig-sub">House {prashnaChart.targetHouse}: {prashnaChart.targetSign}</div>
+            </div>
+          </div>
+          {prashnaChart.strictures.length > 0 && (
+            <div className="horary-strictures" style={{ marginTop: '2rem' }}>
+              <div className="horary-stricture-label">Strictures & Considerations</div>
+              {prashnaChart.strictures.map((s, i) => (
+                <div key={i} className="horary-stricture-item">
+                   <UiIcon name="sparkle" size={12} /> {s.text}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {mode === 'western' && judgment && chart && (
         <div className="card" style={{ padding: '2.5rem' }}>
           
           <div style={{ marginBottom: '2rem', textAlign: 'center' }}>

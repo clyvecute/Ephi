@@ -31,7 +31,8 @@ export default function AdSlot({ type = 'banner', slotId, style }) {
     }
   }, []);
 
-  if (!adsEnabled) return null;
+  const AD_CLIENT = import.meta.env.VITE_ADSENSE_CLIENT;
+  if (!adsEnabled || !slotId || !AD_CLIENT) return null;
   // Placeholder logic - shows a subtle box if no ad script is active
   // In production, you would replace this with your actual ad network script
   

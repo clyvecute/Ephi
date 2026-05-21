@@ -72,6 +72,20 @@ export default function NavBar() {
       isAi: true
     },
     { 
+      path: '/transit-calendar', 
+      label: 'Calendar', 
+      reqNatal: true, 
+      active: location.pathname === '/transit-calendar',
+      icon: 'star'
+    },
+    { 
+      path: '/progressions', 
+      label: 'Progressions', 
+      reqNatal: true, 
+      active: location.pathname === '/progressions',
+      icon: 'sparkle'
+    },
+    { 
       path: '/synastry', 
       label: 'Synastry', 
       reqNatal: true, 

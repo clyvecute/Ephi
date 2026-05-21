@@ -30,9 +30,51 @@ export function validateBirthData(data) {
   const errors = [];
   if (!data.name?.trim()) errors.push('Name is required.');
   if (!data.date || !/^\d{4}-\d{2}-\d{2}$/.test(data.date)) errors.push('Date must be YYYY-MM-DD.');
-  if (!data.time || !/^\d{2}:\d{2}$/.test(data.time)) errors.push('Time must be HH:MM.');
+  
+  // Normalize and validate birth time (accepts both 12-hour AM/PM and 24-hour formats)
+  let timeStr = (data.time || '').trim().toUpperCase();
+  const amPmMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)$/i);
+  const militaryMatch = timeStr.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+
+  if (amPmMatch) {
+    let hours = parseInt(amPmMatch[1], 10);
+    const minutes = amPmMatch[2];
+    const period = amPmMatch[3].toUpperCase();
+    
+    if (hours < 1 || hours > 12 || parseInt(minutes, 10) >= 60) {
+      errors.push('Time must be a valid 12-hour format.');
+    } else {
+      if (period === 'PM' && hours < 12) hours += 12;
+      if (period === 'AM' && hours === 12) hours = 0;
+      data.time = `${hours.toString().padStart(2, '0')}:${minutes}`;
+    }
+  } else if (militaryMatch) {
+    const hours = parseInt(militaryMatch[1], 10);
+    const minutes = militaryMatch[2];
+    
+    if (hours < 0 || hours >= 24 || parseInt(minutes, 10) >= 60) {
+      errors.push('Time must be a valid 24-hour format.');
+    } else {
+      data.time = `${hours.toString().padStart(2, '0')}:${minutes}`;
+    }
+  } else {
+    errors.push('Time must be a valid 12-hour (AM/PM) or 24-hour format.');
+  }
+
   if (data.lat == null || isNaN(data.lat) || data.lat < -90 || data.lat > 90) errors.push('Invalid latitude.');
   if (data.lon == null || isNaN(data.lon) || data.lon < -180 || data.lon > 180) errors.push('Invalid longitude.');
+
+  // Inject utcOffset dynamically using Luxon if missing
+  if (data.date && data.time && data.timezone && data.utcOffset == null) {
+    try {
+      const zone = data.timezone || 'UTC';
+      const dt = DateTime.fromISO(`${data.date}T${data.time}`, { zone });
+      if (dt.isValid) {
+        data.utcOffset = dt.offset / 60;
+      }
+    } catch {}
+  }
+
   if (data.utcOffset == null || isNaN(data.utcOffset)) errors.push('UTC timezone offset is required.');
   return errors;
 }

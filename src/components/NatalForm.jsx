@@ -3,7 +3,7 @@
  * Birth data entry form — improved UX with stepped layout,
  * auto-timezone from city geocoding, and a live preview panel.
  */
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { geocodeCity } from '../lib/geocoding.js';
 import { UiIcon } from './EphiIcons.jsx';
 
@@ -89,6 +89,67 @@ export default function NatalForm({
   const [showTzPicker, setShowTzPicker] = useState(false);
   const searchTimer = useRef(null);
 
+  // Parse initial time into hours/minutes and AM/PM
+  const initialTimeObj = useMemo(() => {
+    let rawTime = initialData?.time || '12:00';
+    let hour = 12;
+    let minute = '00';
+    let period = 'PM';
+
+    const match = rawTime.match(/^(\d{1,2}):(\d{2})/);
+    if (match) {
+      let h = parseInt(match[1], 10);
+      minute = match[2];
+      if (h >= 12) {
+        period = 'PM';
+        hour = h === 12 ? 12 : h - 12;
+      } else {
+        period = 'AM';
+        hour = h === 0 ? 12 : h;
+      }
+    }
+    return {
+      timeStr: `${hour.toString().padStart(2, '0')}:${minute}`,
+      period
+    };
+  }, [initialData?.time]);
+
+  const [timeInput, setTimeInput] = useState(initialTimeObj.timeStr);
+  const [timePeriod, setTimePeriod] = useState(initialTimeObj.period);
+  const [timeUnknown, setTimeUnknown] = useState(false);
+
+  const handleToggleTimeUnknown = (checked) => {
+    setTimeUnknown(checked);
+    if (checked) {
+      setTimeInput('12:00');
+      setTimePeriod('PM');
+    }
+  };
+
+  useEffect(() => {
+    if (timeUnknown) {
+      setForm(f => ({ ...f, time: '12:00', precision: false }));
+      return;
+    }
+    const match = timeInput.match(/^(\d{1,2}):(\d{2})/);
+    if (match) {
+      let h = parseInt(match[1], 10);
+      const m = match[2];
+      if (timePeriod === 'PM' && h < 12) h += 12;
+      if (timePeriod === 'AM' && h === 12) h = 0;
+      setForm(f => ({ ...f, time: `${h.toString().padStart(2, '0')}:${m}`, precision: true }));
+    }
+  }, [timeInput, timePeriod, timeUnknown]);
+
+  const displayTimePreview = useMemo(() => {
+    const match = timeInput.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return '';
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    if (h < 1 || h > 12 || parseInt(m, 10) >= 60) return '';
+    return `Will generate chart for: ${h.toString().padStart(2, '0')}:${m} ${timePeriod}`;
+  }, [timeInput, timePeriod]);
+
   function set(field, value) {
     setForm(f => ({ ...f, [field]: value }));
   }
@@ -163,7 +224,7 @@ export default function NatalForm({
       sidereal:    form.sidereal,
       gender:      form.gender,
       houseSystem: form.houseSystem,
-      precision:   true,
+      precision:   !timeUnknown,
     });
   }
 
@@ -223,15 +284,76 @@ export default function NatalForm({
                 Birth Time
                 <span style={{ marginLeft: '0.4rem', color: 'var(--text-muted)', fontStyle: 'italic', fontWeight: 400 }}>(use 12:00 if unknown)</span>
               </label>
-              <input
-                id="natal-time"
-                type="time"
-                className="form-input"
-                value={form.time}
-                onChange={e => set('time', e.target.value)}
-                required
-                style={{ colorScheme: 'dark', marginBottom: 0 }}
-              />
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                <input
+                  id="natal-time"
+                  type="text"
+                  className="form-input"
+                  placeholder="12:00"
+                  value={timeInput}
+                  onChange={e => setTimeInput(e.target.value)}
+                  required
+                  disabled={timeUnknown}
+                  style={{ marginBottom: 0, flex: 1, minWidth: '70px', opacity: timeUnknown ? 0.6 : 1, cursor: timeUnknown ? 'not-allowed' : 'text' }}
+                />
+                <div style={{ display: 'flex', background: 'var(--bg-deep)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border)', height: '40px', alignItems: 'center', opacity: timeUnknown ? 0.6 : 1 }}>
+                  <button
+                    type="button"
+                    onClick={() => setTimePeriod('AM')}
+                    disabled={timeUnknown}
+                    style={{
+                      padding: '0 0.65rem',
+                      height: '34px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: timeUnknown ? 'not-allowed' : 'pointer',
+                      background: timePeriod === 'AM' ? 'var(--accent)' : 'transparent',
+                      color: timePeriod === 'AM' ? '#fff' : 'var(--text-secondary)',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    AM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTimePeriod('PM')}
+                    disabled={timeUnknown}
+                    style={{
+                      padding: '0 0.65rem',
+                      height: '34px',
+                      borderRadius: '6px',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      border: 'none',
+                      cursor: timeUnknown ? 'not-allowed' : 'pointer',
+                      background: timePeriod === 'PM' ? 'var(--accent)' : 'transparent',
+                      color: timePeriod === 'PM' ? '#fff' : 'var(--text-secondary)',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    PM
+                  </button>
+                </div>
+              </div>
+              <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <input
+                  id="natal-time-unknown"
+                  type="checkbox"
+                  checked={timeUnknown}
+                  onChange={e => handleToggleTimeUnknown(e.target.checked)}
+                  style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                />
+                <label htmlFor="natal-time-unknown" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', cursor: 'pointer', userSelect: 'none' }}>
+                  Time Unknown (defaults to 12:00 Noon)
+                </label>
+              </div>
+              {displayTimePreview && !timeUnknown && (
+                <div style={{ fontSize: '0.65rem', color: 'var(--harmonic)', marginTop: '0.35rem', fontWeight: 600 }}>
+                  {displayTimePreview}
+                </div>
+              )}
             </div>
           </div>
         </div>

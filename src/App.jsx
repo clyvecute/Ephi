@@ -29,6 +29,9 @@ const FaqPage = lazy(() => import('./pages/FaqPage.jsx'));
 const SupportPage = lazy(() => import('./pages/SupportPage.jsx'));
 const AboutPage = lazy(() => import('./pages/AboutPage.jsx'));
 const AdminPage = lazy(() => import('./pages/AdminPage.jsx'));
+const SharedChartPage     = lazy(() => import('./pages/SharedChartPage.jsx'));
+const TransitCalendarPage = lazy(() => import('./pages/TransitCalendarPage.jsx'));
+const ProgressionsPage    = lazy(() => import('./pages/ProgressionsPage.jsx'));
 import FeedbackModal from './components/FeedbackModal';
 import { logPageView } from './lib/analytics';
 import { store } from './lib/store';
@@ -135,6 +138,8 @@ export default function App() {
             <Routes>
               {/* Landing page */}
               <Route path="/" element={<Landing />} />
+              {/* Public shared chart — no login required */}
+              <Route path="/chart/:encoded" element={<SharedChartPage />} />
 
               {/* Transit dashboard */}
               <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -153,6 +158,8 @@ export default function App() {
 
               {/* Returns page */}
               <Route path="/returns" element={<ProtectedRoute><ReturnsPage /></ProtectedRoute>} />
+              <Route path="/transit-calendar" element={<ProtectedRoute><TransitCalendarPage /></ProtectedRoute>} />
+              <Route path="/progressions" element={<ProtectedRoute><ProgressionsPage /></ProtectedRoute>} />
 
               {/* Tools page */}
               <Route path="/tools" element={<ProtectedRoute><ToolsPage /></ProtectedRoute>} />

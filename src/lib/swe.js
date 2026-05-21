@@ -24,6 +24,23 @@ const FLAG_MOSHIER  = 4;    // SEFLG_MOSEPH
 const FLAG_SPEED    = 256;  // SEFLG_SPEED
 const FLAG_SIDEREAL = 65536; // SEFLG_SIDEREAL
 
+// Sidereal modes (SE_SIDM_* from swephexp.h)
+const SE_SIDM_LAHIRI          = 1;   // Chitrapaksha — standard for most Jyotish
+const SE_SIDM_RAMAN           = 3;   // B.V. Raman
+const SE_SIDM_KRISHNAMURTI    = 5;   // KP system
+const SE_SIDM_YUKTESHWAR      = 7;   // Sri Yukteshwar
+
+// Expose current ayanamsa setting so VedicPage can display it
+export let currentAyanamsa = SE_SIDM_LAHIRI;
+
+export function setAyanamsa(mode) {
+  currentAyanamsa = mode;
+  // If WASM is already loaded, update it immediately
+  if (wasmModule) {
+    wasmModule.ccall('swe_set_sid_mode', null, ['number','number','number'], [mode, 0, 0]);
+  }
+}
+
 // CalendarType: 1 = Gregorian
 const GREGORIAN = 1;
 
@@ -57,7 +74,13 @@ export async function initSwe() {
       _swe_version = mod.cwrap('swe_version_wrap', 'string', []);
 
       wasmModule = mod;
+
+      // Set Lahiri ayanamsa explicitly
+      mod.ccall('swe_set_sid_mode', null, ['number','number','number'],
+        [SE_SIDM_LAHIRI, 0, 0]);
+
       console.log('[SWE] Professional Ephemeris initialized:', _swe_version());
+      console.log('[SWE] Ayanamsa: Lahiri (Chitrapaksha)');
       return mod;
     } catch (err) {
       console.error('[SWE] Failed to initialize WASM:', err);
@@ -203,3 +226,49 @@ export async function getPrecisionHouses(date, lat, lon, system = 'P', options =
     cusps      // Array of 12 house cusps
   };
 }
+
+/**
+ * Calculate sunrise and sunset for a date and location.
+ * Returns { sunrise: Date, sunset: Date, sunriseMins: number, sunsetMins: number } in UTC.
+ *
+ * @param {Date}   date  - The date (time ignored; uses noon as seed)
+ * @param {number} lat   - Latitude
+ * @param {number} lon   - Longitude
+ */
+export async function getSunriseSunset(date, lat, lon) {
+  const mod = await initSwe();
+
+  // Seed JD at noon UTC on the requested date
+  const noon = new Date(Date.UTC(
+    date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0
+  ));
+  const jdNoon = dateToJD(mod, noon);
+
+  const tret  = mod._malloc(2 * 8); // double[2]: [rise, set]
+  const errPtr = mod._malloc(256);
+
+  // SE_CALC_RISE = 1, SE_CALC_SET = 2
+  // body = 0 (Sun), atpress = 1013.25, attemp = 15 (standard atmosphere)
+  const riseFlag = mod.ccall(
+    'swe_rise_trans_wrap', 'number',
+    ['number','number','number','number','number','number','number','number'],
+    [jdNoon, 0, 1, lat, lon, 1013.25, 15.0, tret]
+  );
+
+  const jdRise = mod.getValue(tret, 'double');
+  const jdSet  = mod.getValue(tret + 8, 'double');
+
+  mod._free(tret);
+  mod._free(errPtr);
+
+  // Convert JD back to JS Date
+  const jdToDate = jd => new Date((jd - 2440587.5) * 86400000);
+
+  return {
+    sunrise: jdToDate(jdRise),
+    sunset:  jdToDate(jdSet),
+    sunriseMins: jdToDate(jdRise).getUTCHours() * 60 + jdToDate(jdRise).getUTCMinutes(),
+    sunsetMins:  jdToDate(jdSet).getUTCHours()  * 60 + jdToDate(jdSet).getUTCMinutes(),
+  };
+}
+

@@ -209,6 +209,19 @@ export default function AstroChartWheel({
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(data)));
   };
 
+  const handleDownloadSvg = () => {
+    const svg = document.querySelector(`[data-ephi-chart] svg`);
+    if (!svg) return;
+    const data = new XMLSerializer().serializeToString(svg);
+    const blob = new Blob([data], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.download = `ephi-chart-${Date.now()}.svg`;
+    a.href = url;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   if (!natal) return null;
 
   // ── SVG Build ────────────────────────────────────────────────────────────────
@@ -458,6 +471,22 @@ export default function AstroChartWheel({
 
         </svg>
       </div>
+
+      {/* SVG Download button */}
+      <button
+        onClick={handleDownloadSvg}
+        title="Download chart as SVG"
+        style={{
+          position:'absolute', bottom:10, right:48,
+          background:'rgba(255,255,255,0.9)', border:'1px solid #ddd',
+          borderRadius:'50%', width:30, height:30,
+          display:'flex', alignItems:'center', justifyContent:'center',
+          cursor:'pointer', color:'#666', boxShadow:'0 2px 8px rgba(0,0,0,0.1)',
+          fontSize:'9px', fontWeight:'800', zIndex:10,
+        }}
+      >
+        SVG
+      </button>
 
       {/* Download button */}
       <button

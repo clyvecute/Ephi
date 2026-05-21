@@ -181,7 +181,7 @@ export default function NatalSummary({ chart, onClear }) {
               </span>
             </div>
             <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
-              {meta.date} · {meta.time} · {meta.city}
+              {meta.date} · {meta.timeUnknown ? 'Unknown (≈ noon)' : meta.time} · {meta.city}
             </div>
           </div>
           <button className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '0.4rem 0.85rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }} onClick={onClear}>

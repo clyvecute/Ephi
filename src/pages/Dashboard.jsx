@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { useTransits } from '../hooks/useTransits.js';
 import { useNatal } from '../hooks/useNatal.js';
 import PlanetTable from '../components/PlanetTable.jsx';
@@ -17,6 +17,7 @@ import EphiMarkdown from '../components/EphiMarkdown.jsx';
 import { useToast } from '../components/Toast';
 import AdSlot from '../components/AdSlot.jsx';
 import { store } from '../lib/store';
+import { copyShareUrl } from '../lib/shareChart.js';
 
 const TABS = [
   { id: 'sky',      label: 'Live Sky' },
@@ -108,9 +109,64 @@ export default function Dashboard() {
   const [isEditing, setIsEditing] = useState(false);
   const { natalChart, saveChart, clearChart, loading: natalLoading, error: natalError } = useNatal();
   const [scrubDate, setScrubDate] = useState(null); // null = Live
-  const { transitPositions, skyAspects, transitToNatal, lastUpdated, refresh } = useTransits(natalChart, 60_000, scrubDate);
+  const { transitPositions, skyAspects, transitToNatal, lastUpdated, refresh, error: transitError } = useTransits(natalChart, 60_000, scrubDate);
   const [deepDive, setDeepDive] = useState(null);
+  const [shareCopied, setShareCopied] = useState(false);
   const toast = useToast();
+
+  const handleShare = async () => {
+    if (!natalChart) return;
+    try {
+      await copyShareUrl(natalChart);
+      setShareCopied(true);
+      toast('Share URL copied to clipboard!');
+      setTimeout(() => setShareCopied(false), 2500);
+    } catch (e) {
+      console.error('Share failed:', e);
+      toast('Failed to generate share URL.');
+    }
+  };
+
+  // Toast for ephemeris failure
+  useEffect(() => {
+    if (transitError) {
+      toast(`Ephemeris error: ${transitError.message || 'Transit calculation failed.'}`);
+    }
+  }, [transitError, toast]);
+
+  const jumpTime = (amount, unit) => {
+    const baseDate = scrubDate ? new Date(scrubDate) : new Date();
+    if (unit === 'd') {
+      baseDate.setDate(baseDate.getDate() + amount);
+    } else if (unit === 'w') {
+      baseDate.setDate(baseDate.getDate() + amount * 7);
+    } else if (unit === 'm') {
+      baseDate.setMonth(baseDate.getMonth() + amount);
+    }
+    setScrubDate(baseDate.toISOString());
+  };
+
+  const handleTabKeyDown = (e) => {
+    const currentIndex = TABS.findIndex(t => t.id === tab);
+    let nextIndex = currentIndex;
+
+    if (e.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % TABS.length;
+    } else if (e.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + TABS.length) % TABS.length;
+    } else {
+      return;
+    }
+
+    e.preventDefault();
+    const nextTabId = TABS[nextIndex].id;
+    setTab(nextTabId);
+    
+    // Set focus to the newly activated tab button
+    setTimeout(() => {
+      document.getElementById(`tab-${nextTabId}`)?.focus();
+    }, 0);
+  };
 
   const handleSynthesize = async (asp) => {
     setDeepDive({ asp, loading: true, text: '' });
@@ -148,7 +204,7 @@ export default function Dashboard() {
       <AdSlot type="banner" slotId="dashboard-top" />
 
       {/* Tab bar */}
-      <nav className="tab-bar" role="tablist">
+      <nav className="tab-bar" role="tablist" onKeyDown={handleTabKeyDown}>
         {TABS.map(t => (
           <button
             key={t.id}
@@ -157,6 +213,7 @@ export default function Dashboard() {
             onClick={() => setTab(t.id)}
             role="tab"
             aria-selected={tab === t.id}
+            tabIndex={tab === t.id ? 0 : -1}
           >
             {t.label}
           </button>
@@ -219,6 +276,16 @@ export default function Dashboard() {
               colorScheme: 'dark'
             }}
           />
+
+          {/* Quick-jump buttons */}
+          <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.72rem', minWidth: '36px', height: '36px', justifyContent: 'center' }} onClick={() => jumpTime(-1, 'd')} title="Subtract 1 day">-1d</button>
+            <button type="button" className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.72rem', minWidth: '36px', height: '36px', justifyContent: 'center' }} onClick={() => jumpTime(1, 'd')} title="Add 1 day">+1d</button>
+            <button type="button" className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.72rem', minWidth: '36px', height: '36px', justifyContent: 'center' }} onClick={() => jumpTime(-1, 'w')} title="Subtract 1 week">-1w</button>
+            <button type="button" className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.72rem', minWidth: '36px', height: '36px', justifyContent: 'center' }} onClick={() => jumpTime(1, 'w')} title="Add 1 week">+1w</button>
+            <button type="button" className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.72rem', minWidth: '36px', height: '36px', justifyContent: 'center' }} onClick={() => jumpTime(-1, 'm')} title="Subtract 1 month">-1m</button>
+            <button type="button" className="btn btn-ghost" style={{ padding: '6px 10px', fontSize: '0.72rem', minWidth: '36px', height: '36px', justifyContent: 'center' }} onClick={() => jumpTime(1, 'm')} title="Add 1 month">+1m</button>
+          </div>
 
           <button
             className="btn btn-ghost"
@@ -304,10 +371,20 @@ export default function Dashboard() {
 
             {/* Right Column: Personal Impacts */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
                   <strong>Your Personal Transits.</strong> The inner wheel is your birth chart; the outer wheel is the sky today. The list below interprets how these movements are activating your unique potential.
                 </p>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
+                  <Link to="/transit-calendar" className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '8px 14px', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <UiIcon name="fourstar" size={13} />
+                    Transit Calendar
+                  </Link>
+                  <Link to="/progressions" className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '8px 14px', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <UiIcon name="sparkle" size={13} />
+                    Secondary Progressions
+                  </Link>
+                </div>
               </div>
               <PlanetTable positions={transitPositions} natal={natalChart} />
               <HouseTransits transitPositions={transitPositions} natalChart={natalChart} />
@@ -352,10 +429,18 @@ export default function Dashboard() {
 
             {/* Right Column: Analysis */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              <div className="glass-panel" style={{ padding: '1.5rem' }}>
+              <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <p style={{ fontSize: '0.95rem', color: 'var(--text-secondary)', lineHeight: 1.6, margin: 0 }}>
                   <strong>Your Natal Blueprint.</strong> This is the snapshot of the cosmos at your first breath. It represents your fundamental architecture and the soul's primary curriculum.
                 </p>
+                <button
+                  className="btn btn-primary"
+                  onClick={handleShare}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', alignSelf: 'flex-start', fontSize: '0.8rem', padding: '8px 16px' }}
+                >
+                  <UiIcon name="sparkle" size={12} />
+                  {shareCopied ? '✓ Copied!' : '⎘ Share Chart'}
+                </button>
               </div>
               <NatalSummary chart={natalChart} onClear={() => setIsEditing(true)} />
             </div>
