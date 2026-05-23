@@ -363,3 +363,7 @@ export function approximateSunriseSunset(date, latDeg) {
   const sunsetMins  = Math.round((12 + halfDay) * 60);
   return { sunriseMins, sunsetMins };
 }
+
+export function getKalaStatus(date, sunriseMins, sunsetMins) {
+  return { name: 'Neutral', quality: 'neutral' };
+}

@@ -24,8 +24,10 @@ export default function ReturnsPage() {
 
   useEffect(() => {
     try {
-      const cached = store.getJSON('astro_natal');
-      if (cached) setNatal(cached);
+      const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
+      const key = uid ? `uid_${uid}__astro_natal` : 'astro_natal';
+      const cached = localStorage.getItem(key);
+      if (cached) setNatal(JSON.parse(cached));
     } catch {}
   }, []);
 
@@ -48,11 +50,6 @@ export default function ReturnsPage() {
       } else if (mode === 'lunar') {
         const moonLon = natal.positions.moon.longitude ?? natal.positions.moon;
         result = await findLunarReturn(moonLon, new Date(), isSidereal);
-      } else if (mode === 'progressed') {
-        const birthDate = new Date(natal.meta.date + 'T' + natal.meta.time);
-        const natalAsc = natal.ascendant?.longitude ?? null;
-        result = await getSecondaryProgressions(birthDate, new Date(), natalAsc, isSidereal);
-        result.type = 'Secondary Progression';
       }
       setReturnChart(result);
       setAiReading(''); // Reset reading on new chart
@@ -113,7 +110,7 @@ export default function ReturnsPage() {
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button className={`btn ${mode === 'solar' ? 'btn-primary' : 'btn-ghost'}`} style={{ padding: '6px 16px', fontSize: '0.85rem' }} onClick={() => setMode('solar')}>Solar Return</button>
           <button className={`btn ${mode === 'lunar' ? 'btn-primary' : 'btn-ghost'}`} style={{ padding: '6px 16px', fontSize: '0.85rem' }} onClick={() => setMode('lunar')}>Lunar Return</button>
-          <button className={`btn ${mode === 'progressed' ? 'btn-primary' : 'btn-ghost'}`} style={{ padding: '6px 16px', fontSize: '0.85rem' }} onClick={() => setMode('progressed')}>Progressions</button>
+          <a href="/progressions" className="btn btn-ghost" style={{ padding: '6px 16px', fontSize: '0.85rem', textDecoration: 'none' }}>Progressions →</a>
         </div>
 
         {mode === 'solar' && (

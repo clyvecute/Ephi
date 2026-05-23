@@ -35,84 +35,124 @@ const LOGIC_MODES = [
 /**
  * Refined Electional Scoring Logic
  */
+// Mode-specific weights for planets
+const MODE_BENEFICS = {
+  general:  ['jupiter', 'venus'],
+  love:     ['venus', 'moon'],
+  business: ['jupiter', 'saturn', 'mercury'],
+  spirit:   ['moon', 'neptune', 'jupiter'],
+};
+const MODE_MALEFICS = {
+  general:  ['saturn', 'mars'],
+  love:     ['saturn', 'mars'],
+  business: ['mars', 'neptune'],
+  spirit:   ['saturn', 'mars'],
+};
+
+function getLon(val) {
+  return typeof val === 'object' ? val?.longitude : val;
+}
+
+function isVoidOfCourse(moonLon, positions) {
+  // Moon is Void of Course when it makes no more major aspects
+  // before leaving its current sign.
+  const moonDegInSign = moonLon % 30;
+  const degreesLeft = 30 - moonDegInSign;
+  const ASPECT_ANGLES = [0, 60, 90, 120, 180];
+  const ORB = 1;
+  const otherPlanets = ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'];
+
+  for (const planet of otherPlanets) {
+    const pLon = getLon(positions[planet]);
+    if (pLon == null) continue;
+    for (const angle of ASPECT_ANGLES) {
+      for (let target = moonLon; target < moonLon + degreesLeft; target += 0.5) {
+        const dist = Math.abs(((target - pLon) % 360 + 360) % 360);
+        const orb = Math.min(dist, 360 - dist);
+        if (Math.abs(orb - angle) < ORB) return false;
+      }
+    }
+  }
+  return true;
+}
+
 function scoreMoment(positions, mode, natal) {
-  let score = 50; // Neutral baseline
-  const reasons = [];
+  const aspects   = getActiveAspects(positions);
+  const tn        = natal ? getActiveAspects(positions, natal?.positions || {}) : [];
 
-  const aspects = getActiveAspects(positions);
+  let score = 50;
+  const reasons  = [];
+  const warnings = [];
 
-  // 1. The Moon (Foundation of all Elections)
-  const moonObj = positions['moon'];
-  const moonLon = moonObj?.longitude ?? 0;
-  const moonSignInfo = getZodiacInfo(moonLon);
-  const moonSign = moonSignInfo?.sign;
-  
-  // Moon Phase
-  const sunLon = positions['sun']?.longitude ?? 0;
-  const phaseAngle = (moonLon - sunLon + 360) % 360;
-  if (phaseAngle < 180) {
-    score += 12; reasons.push('Waxing Moon (Growth period)');
+  const moonLon = getLon(positions['moon']);
+  const sunLon  = getLon(positions['sun']);
+
+  // 1. Void of Course Moon (most important — hard block on all elections)
+  if (isVoidOfCourse(moonLon, positions)) {
+    score -= 35;
+    warnings.push('⚠ Void of Course Moon — avoid all elections');
+  }
+
+  // 2. Mercury Retrograde
+  const mercVal = positions['mercury'];
+  const mercRx  = typeof mercVal === 'object' && mercVal?.retrograde;
+  if (mercRx && (mode === 'business' || mode === 'general')) {
+    score -= 20;
+    warnings.push('⚠ Mercury Retrograde — avoid contracts/communications');
+  }
+
+  // 3. Moon Phase
+  const phaseAngle = ((moonLon - sunLon) % 360 + 360) % 360;
+  if (phaseAngle < 45) {
+    score -= 5;  reasons.push('New Moon — beginnings only');
+  } else if (phaseAngle < 180) {
+    score += 12; reasons.push('Waxing Moon ✓');
+  } else if (phaseAngle < 225) {
+    score += 5;  reasons.push('Full Moon — culmination');
   } else {
-    score -= 6; reasons.push('Waning Moon (Release period)');
+    score -= 8;  reasons.push('Waning Moon — avoid new starts');
   }
 
-  // Guard against Moon in Scorpio (Fall)
-  if (moonSign === 'Scorpio') {
-    score -= 15; reasons.push('Moon in Fall (Scorpio)');
-  }
+  // 4. Mode-specific benefic/malefic planets
+  const benefics = MODE_BENEFICS[mode] || ['jupiter', 'venus'];
+  const malefics = MODE_MALEFICS[mode] || ['saturn', 'mars'];
 
-  // Daily Aspect Fluctuations (Adds high granularity to score values)
-  const softMoon = aspects.filter(a => (a.transitPlanet === 'moon' || a.natalPlanet === 'moon') && a.nature === 'soft').length;
-  const hardMoon = aspects.filter(a => (a.transitPlanet === 'moon' || a.natalPlanet === 'moon') && a.nature === 'hard').length;
-  score += (softMoon * 4) - (hardMoon * 5);
-
-  // 2. Mode Specifics
-  if (mode === 'love') {
-    const venusLon = positions['venus']?.longitude ?? 0;
-    const venusSignInfo = getZodiacInfo(venusLon);
-    
-    if (['Taurus', 'Libra', 'Pisces'].includes(venusSignInfo?.sign)) {
-      score += 15; reasons.push('Venus Dignified (+)');
-    } else if (['Aries', 'Scorpio', 'Virgo'].includes(venusSignInfo?.sign)) {
-      score -= 10; reasons.push('Venus Afflicted (-)');
-    }
-
-    const marsRetro = positions['mars']?.retrograde;
-    if (marsRetro) {
-      score -= 15; reasons.push('Mars Retrograde (Tension)');
+  for (const planet of benefics) {
+    const harmonic = aspects.find(a =>
+      (a.transitPlanet === planet || a.natalPlanet === planet) &&
+      (a.nature === 'harmonic' || a.nature === 'soft')
+    );
+    if (harmonic) {
+      score += 12;
+      reasons.push(`${planet[0].toUpperCase() + planet.slice(1)} well-aspected ✓`);
     }
   }
 
-  if (mode === 'business') {
-    const mercuryObj = positions['mercury'];
-    const mercuryRetro = mercuryObj?.retrograde || (mercuryObj?.speed != null && mercuryObj.speed < 0);
-    
-    if (mercuryRetro) {
-      score -= 25; reasons.push('Mercury Retrograde (Avoid Signings)');
-    } else {
-      score += 10; reasons.push('Mercury Direct (Clear communication)');
-    }
-
-    const jupiterSign = getZodiacInfo(positions['jupiter']?.longitude)?.sign;
-    if (['Sagittarius', 'Pisces', 'Cancer'].includes(jupiterSign)) {
-      score += 12; reasons.push('Jupiter Strong (Expansion)');
+  for (const planet of malefics) {
+    const tense = aspects.find(a =>
+      (a.transitPlanet === planet || a.natalPlanet === planet) &&
+      (a.nature === 'tense' || a.nature === 'hard')
+    );
+    if (tense) {
+      score -= 10;
+      reasons.push(`${planet[0].toUpperCase() + planet.slice(1)} friction ✗`);
     }
   }
 
-  if (mode === 'spirit') {
-    const neptuneSign = getZodiacInfo(positions['neptune']?.longitude)?.sign;
-    if (['Pisces'].includes(neptuneSign)) {
-      score += 10; reasons.push('Neptune Mystical Resonance');
-    }
-    const saturnRetro = positions['saturn']?.retrograde;
-    if (!saturnRetro) {
-      score += 5; reasons.push('Saturn Direct (Grounded wisdom)');
-    }
-  }
+  // 5. Natal transit bonus
+  const natalHarmonic = tn.filter(a => a.nature === 'harmonic' || a.nature === 'soft').length;
+  const natalTense    = tn.filter(a => a.nature === 'tense'    || a.nature === 'hard').length;
+  score += (natalHarmonic * 4) - (natalTense * 5);
+
+  // 6. Overall sky quality
+  const hard = aspects.filter(a => a.nature === 'tense' || a.nature === 'hard').length;
+  const soft = aspects.filter(a => a.nature === 'harmonic' || a.nature === 'soft').length;
+  score += (soft * 1.5) - (hard * 2);
 
   return {
-    score: Math.min(Math.max(score, 10), 98),
-    reasons: reasons.slice(0, 3)
+    score:    Math.min(Math.max(Math.round(score), 0), 100),
+    reasons:  [...warnings, ...reasons].slice(0, 5),
+    warnings: warnings.length > 0,
   };
 }
 

@@ -28,20 +28,20 @@ export default function ToolsPage() {
       icon: 'sparkle' 
     },
     { 
-      path: '/transit-calendar', 
-      name: 'Transit Calendar', 
-      tag: 'Intermediate',
-      desc: 'Calculates the exact minute transits cross into orbs or become exact against your natal coordinates. Day-grouped timeline mapping out all planetary opportunities and warnings.',
-      useCase: 'Best for: Timing big initiatives and spotting major energetic windows.',
-      icon: 'star' 
+      path: '/transit-calendar',
+      name: 'Transit Calendar',
+      tag: 'New',
+      desc: 'A 30-day timeline of every exact aspect between the current sky and your natal chart, with precise times. Know when Mars squares your Moon before it happens.',
+      useCase: 'Best for: Planning your month around major transits.',
+      icon: 'refresh'
     },
     { 
-      path: '/progressions', 
-      name: 'Secondary Progressions', 
-      tag: 'Advanced',
-      desc: 'One symbolic day of planetary motion equals one year of human life. Tracks the slow maturation and shifting priorities of your natal soul blueprint across your lifespan.',
-      useCase: 'Best for: Understanding long-term internal cycles and soul evolution.',
-      icon: 'sparkle' 
+      path: '/progressions',
+      name: 'Secondary Progressions',
+      tag: 'New',
+      desc: 'One day of life equals one year of symbolic growth. Secondary progressions reveal the slow unfolding of your natal chart — your inner evolution over decades.',
+      useCase: 'Best for: Understanding long-term personal development cycles.',
+      icon: 'sparkle'
     },
     { 
       path: '/bazi', 

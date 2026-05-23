@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { castHoraryChart, judgeChart, HOUSE_TOPICS } from '../lib/horary';
 import { getHoraryStrictures } from '../lib/hellenistic';
 import { UiIcon, PlanetIcon } from '../components/EphiIcons';
-import ChartWheel from '../components/AstroChartWheel.jsx';
+import { NatalWheel } from '../components/AstroChartWheel';
 import { generateHoraryReading, continueHoraryReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 import { store } from '../lib/store';
@@ -424,7 +424,7 @@ export default function HoraryPage() {
         <div className="card" style={{ padding: '2.5rem' }}>
           
           <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-            <ChartWheel 
+            <NatalWheel 
               planets={chart.planets}
               aspects={chart.aspects}
               ascendant={chart.asc.longitude}

@@ -27,7 +27,9 @@ export default function VedicPage() {
   const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
-    const settings = store.getJSON('ephi_settings') || {};
+    const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
+    const settingsKey = uid ? `uid_${uid}__ephi_settings` : 'ephi_settings';
+    const settings = JSON.parse(localStorage.getItem(settingsKey) || '{}');
     setPuristMode(settings.puristMode || false);
     calculateVedic();
   }, []);

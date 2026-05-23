@@ -26,7 +26,9 @@ export default function SynastryGrid({ aspects }) {
   // Map aspects by planet pair for quick lookup
   const gridMap = {};
   aspects.forEach(asp => {
-    const key = `${asp.p1.toLowerCase()}-${asp.p2.toLowerCase()}`;
+    const p1 = asp.transitPlanet || asp.planet1 || asp.p1 || '';
+    const p2 = asp.natalPlanet  || asp.planet2 || asp.p2 || '';
+    const key = `${p1.toLowerCase()}-${p2.toLowerCase()}`;
     // Store only the strongest aspect if multiple exist (unlikely in most engines but safe)
     if (!gridMap[key] || asp.orb < gridMap[key].orb) {
       gridMap[key] = asp;

@@ -16,9 +16,11 @@ export default function HellenisticPage() {
 
   useEffect(() => {
     try {
-      const cached = store.getJSON('astro_natal');
+      const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
+      const key = uid ? `uid_${uid}__astro_natal` : 'astro_natal';
+      const cached = localStorage.getItem(key);
       if (cached) {
-        const parsed = cached;
+        const parsed = JSON.parse(cached);
         setNatal(parsed);
         
         const ascLon = parsed.ascendant?.longitude ?? parsed.positions.sun.longitude;

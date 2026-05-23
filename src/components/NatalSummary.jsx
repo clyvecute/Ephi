@@ -8,7 +8,8 @@ import { ALL_PLANETS, PLANET_META, getZodiacInfo, getPlanetPositions } from '../
 import { SIGN_RULERS } from '../lib/astronomy.js';
 import { calculateDignity, calculateLots } from '../lib/hellenistic.js';
 import { PlanetIcon, ZodiacIcon, UiIcon } from './EphiIcons.jsx';
-import { getNatalAspects, detectPatterns } from '../lib/patterns.js';
+import { getActiveAspects } from '../lib/aspects.js';
+import { detectPatterns } from '../lib/patterns.js';
 
 const BIG_THREE = [
   { key: 'sunSign',   label: 'Sun',    planet: 'sun' },
@@ -113,7 +114,7 @@ export default function NatalSummary({ chart, onClear }) {
 
   const natalAspects = useMemo(() => {
     if (!positions) return [];
-    const all = getNatalAspects(positions);
+    const all = getActiveAspects(positions);
     const validPlanets = ['sun','moon','mercury','venus','mars','jupiter','saturn','uranus','neptune','pluto'];
     return all.filter(a => validPlanets.includes(a.transitPlanet) && validPlanets.includes(a.natalPlanet) && a.orb <= 8);
   }, [positions]);

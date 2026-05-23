@@ -67,19 +67,42 @@ export async function initSwe() {
       // Extract the raw Emscripten module to bypass broken wrapper methods
       const mod = swe.module;
 
-      // Wrap the C functions we need
-      _swe_julday = mod.cwrap('swe_julday_wrap', 'number', 
+      // Discover the exported function naming convention at runtime.
+      // Standard @swisseph/browser builds export WITHOUT _wrap suffix.
+      // Some custom builds add _wrap. We probe once and use the result everywhere.
+      const FN = {
+        julday:    typeof mod._swe_julday      === 'function' ? 'swe_julday'      : 'swe_julday_wrap',
+        calc_ut:   typeof mod._swe_calc_ut     === 'function' ? 'swe_calc_ut'     : 'swe_calc_ut_wrap',
+        houses:    typeof mod._swe_houses      === 'function' ? 'swe_houses'      : 'swe_houses_wrap',
+        rise_trans:typeof mod._swe_rise_trans  === 'function' ? 'swe_rise_trans'  : 'swe_rise_trans_wrap',
+        version:   typeof mod._swe_version     === 'function' ? 'swe_version'     : 'swe_version_wrap',
+      };
+      // Make the probe visible for debugging
+      console.log('[SWE] Detected function names:', FN);
+
+      _swe_julday = mod.cwrap(FN.julday, 'number',
         ['number', 'number', 'number', 'number', 'number']);
-      
-      _swe_version = mod.cwrap('swe_version_wrap', 'string', []);
+
+      _swe_version = typeof mod[`_${FN.version}`] === 'function'
+        ? mod.cwrap(FN.version, 'string', [])
+        : () => '2.x'; // fallback if version function not exported
+
+      // Validate: J2000.0 should return Julian Day ~2451545.0
+      const j2000 = _swe_julday(2000, 1, 1, 12.0, GREGORIAN);
+      if (typeof j2000 !== 'number' || isNaN(j2000) || Math.abs(j2000 - 2451545.0) > 1) {
+        throw new Error(`swe_julday sanity check failed — got ${j2000}, expected ~2451545. Wrong function name or WASM not ready.`);
+      }
 
       wasmModule = mod;
+      // Store FN map on the module so calcPlanet / houses / rise_trans can read it
+      mod.__FN = FN;
 
       // Set Lahiri ayanamsa explicitly
       mod.ccall('swe_set_sid_mode', null, ['number','number','number'],
         [SE_SIDM_LAHIRI, 0, 0]);
 
-      console.log('[SWE] Professional Ephemeris initialized:', _swe_version());
+      const version = _swe_version();
+      console.log('[SWE] Professional Ephemeris initialized:', version);
       console.log('[SWE] Ayanamsa: Lahiri (Chitrapaksha)');
       return mod;
     } catch (err) {
@@ -114,8 +137,10 @@ function calcPlanet(mod, jd, body, flags) {
   const xxPtr  = mod._malloc(6 * 8);  // 6 doubles
   const errPtr = mod._malloc(256);
 
+  // Use the function name discovered during init (stored on mod.__FN)
+  const calcFn = mod.__FN?.calc_ut ?? 'swe_calc_ut';
   const retflag = mod.ccall(
-    'swe_calc_ut_wrap', 'number',
+    calcFn, 'number',
     ['number', 'number', 'number', 'number', 'number'],
     [jd, body, flags, xxPtr, errPtr]
   );
@@ -197,8 +222,9 @@ export async function getPrecisionHouses(date, lat, lon, system = 'P', options =
   const ascmcPtr = mod._malloc(10 * 8);  // 10 doubles
   const hsysCode = system.charCodeAt(0);
 
+  const housesFn = mod.__FN?.houses ?? 'swe_houses';
   mod.ccall(
-    'swe_houses_wrap', 'number',
+    housesFn, 'number',
     ['number', 'number', 'number', 'number', 'number', 'number'],
     [jd, lat, lon, hsysCode, cuspsPtr, ascmcPtr]
   );
@@ -249,8 +275,9 @@ export async function getSunriseSunset(date, lat, lon) {
 
   // SE_CALC_RISE = 1, SE_CALC_SET = 2
   // body = 0 (Sun), atpress = 1013.25, attemp = 15 (standard atmosphere)
+  const riseTransFn = mod.__FN?.rise_trans ?? 'swe_rise_trans';
   const riseFlag = mod.ccall(
-    'swe_rise_trans_wrap', 'number',
+    riseTransFn, 'number',
     ['number','number','number','number','number','number','number','number'],
     [jdNoon, 0, 1, lat, lon, 1013.25, 15.0, tret]
   );

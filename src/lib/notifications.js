@@ -21,6 +21,13 @@ const FIRED_KEY          = 'astro_alert_fired';  // tracks which alerts already 
 const MAX_LOG_ENTRIES    = 50;
 const EXACT_ORB_DEFAULT  = 1.5; // degrees — alert threshold
 
+function getNotifKey(baseKey) {
+  try {
+    const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
+    return uid ? `uid_${uid}__${baseKey}` : baseKey;
+  } catch { return baseKey; }
+}
+
 // ─── Default preferences ──────────────────────────────────────────────────────
 
 export const DEFAULT_PREFS = {
@@ -56,7 +63,7 @@ import { store } from './store.js';
 
 export function getPreferences() {
   try {
-    const saved = store.get(PREFS_KEY);
+    const saved = store.get(getNotifKey(PREFS_KEY));
     return saved ? { ...DEFAULT_PREFS, ...JSON.parse(saved) } : { ...DEFAULT_PREFS };
   } catch {
     return { ...DEFAULT_PREFS };
@@ -65,13 +72,13 @@ export function getPreferences() {
 
 export function savePreferences(prefs) {
   try {
-    store.setJSON(PREFS_KEY, { ...DEFAULT_PREFS, ...prefs });
+    store.setJSON(getNotifKey(PREFS_KEY), { ...DEFAULT_PREFS, ...prefs });
   } catch {}
 }
 
 export function getAlertLog() {
   try {
-    return store.getJSON(LOG_KEY, []);
+    return store.getJSON(getNotifKey(LOG_KEY), []);
   } catch {
     return [];
   }
@@ -81,18 +88,18 @@ function appendToLog(entry) {
   try {
     const log     = getAlertLog();
     const updated = [entry, ...log].slice(0, MAX_LOG_ENTRIES);
-    store.setJSON(LOG_KEY, updated);
+    store.setJSON(getNotifKey(LOG_KEY), updated);
   } catch {}
 }
 
 export function clearAlertLog() {
-  store.remove(LOG_KEY);
+  store.remove(getNotifKey(LOG_KEY));
 }
 
 // Track which aspect keys have already fired so we don't repeat
 function getFiredKeys() {
   try {
-    return store.getJSON(FIRED_KEY, []);
+    return store.getJSON(getNotifKey(FIRED_KEY), []);
   } catch {
     return [];
   }
@@ -102,7 +109,7 @@ function addFiredKey(key) {
   try {
     const keys    = getFiredKeys();
     const updated = [...new Set([...keys, key])].slice(-200);
-    store.setJSON(FIRED_KEY, updated);
+    store.setJSON(getNotifKey(FIRED_KEY), updated);
   } catch {}
 }
 
@@ -110,7 +117,7 @@ function removeFiredKey(key) {
   try {
     const keys    = getFiredKeys();
     const updated = keys.filter((k) => k !== key);
-    store.setJSON(FIRED_KEY, updated);
+    store.setJSON(getNotifKey(FIRED_KEY), updated);
   } catch {}
 }
 
