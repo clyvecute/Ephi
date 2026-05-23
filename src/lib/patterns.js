@@ -95,28 +95,62 @@ function buildNatalAspects(positions) {
   return { aspects, has, keys };
 }
 
-/**
- * Returns a list of all natal aspects using natal orbs.
- */
-export function getNatalAspects(positions) {
-  const { aspects } = buildNatalAspects(positions);
-  const SYMBOLS = {
-    conjunction: '☌', sextile: '⚹', square: '□', trine: '△', quincunx: '⚻', opposition: '☍',
-    semisextile: '⚺', sesquiquadrate: '⚼'
-  };
-  const NATURE = {
-    conjunction: 'neutral', sextile: 'soft', square: 'hard', trine: 'soft', quincunx: 'hard', opposition: 'hard',
-    semisextile: 'neutral', sesquiquadrate: 'hard'
-  };
-  
-  return aspects.map(a => ({
-    transitPlanet: a.p1,
-    natalPlanet: a.p2,
-    aspectName: a.type,
-    symbol: SYMBOLS[a.type],
-    nature: NATURE[a.type],
-    orb: a.orb,
-  })).sort((a, b) => a.orb - b.orb);
+// ─── Element / modality helpers ───────────────────────────────────────────────
+
+const SIGN_ELEMENT  = ['fire','earth','air','water','fire','earth','air','water','fire','earth','air','water'];
+const SIGN_MODALITY = ['cardinal','fixed','mutable','cardinal','fixed','mutable','cardinal','fixed','mutable','cardinal','fixed','mutable'];
+
+function signIdx(positions, planet) {
+  const lon = ((getLon(positions[planet]) % 360) + 360) % 360;
+  return Math.floor(lon / 30);
+}
+
+function sharedElement(positions, planets) {
+  const elems = [...new Set(planets.map(p => SIGN_ELEMENT[signIdx(positions, p)]))];
+  return elems.length === 1 ? elems[0] : null;
+}
+
+function sharedModality(positions, planets) {
+  const mods = [...new Set(planets.map(p => SIGN_MODALITY[signIdx(positions, p)]))];
+  return mods.length === 1 ? mods[0] : null;
+}
+
+// ─── Stellium with 10° span rule ─────────────────────────────────────────────
+
+function detectStelliums(positions, orbDegrees = 10) {
+  const planets = Object.entries(positions).map(([name, lon]) => ({
+    name, lon: typeof lon === 'object' ? lon.longitude : lon
+  })).filter(p => p.lon != null && !isNaN(p.lon)).sort((a, b) => a.lon - b.lon);
+
+  const stelliums = [];
+
+  for (let i = 0; i < planets.length - 2; i++) {
+    const group = [planets[i]];
+    for (let j = i + 1; j < planets.length; j++) {
+      const span = planets[j].lon - planets[i].lon;
+      if (span <= orbDegrees) {
+        group.push(planets[j]);
+      } else {
+        break;
+      }
+    }
+    if (group.length >= 3) {
+      const span = parseFloat((group[group.length-1].lon - group[0].lon).toFixed(2));
+      const midLon = (group[0].lon + group[group.length-1].lon) / 2;
+      const signName = SIGN_NAMES[Math.floor(((midLon % 360) + 360) % 360 / 30)];
+      stelliums.push({
+        id: `Stellium-${group.map(p => p.name).sort().join('-')}`,
+        type: 'Stellium',
+        planets: group.map(p => p.name),
+        span,
+        description: `${group.length} planets within ${span}° — ${signName}`,
+        focus: `Concentrated energy in ${signName}`,
+      });
+      i += group.length - 1;
+    }
+  }
+
+  return stelliums;
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -130,6 +164,9 @@ export function detectPatterns(positions) {
   const patterns   = [];
   const { aspects, has, keys } = buildNatalAspects(positions);
 
+  // Add stelliums (own detection with span rule)
+  patterns.push(...detectStelliums(positions));
+
   const ofType = t => aspects.filter(a => a.type === t);
   const oppositions = ofType('opposition');
   const trines      = ofType('trine');
@@ -137,25 +174,6 @@ export function detectPatterns(positions) {
   const sextiles    = ofType('sextile');
   const quincunxes  = ofType('quincunx');
   const sesquis     = ofType('sesquiquadrate');
-
-  // ── 1. Stellium ───────────────────────────────────────────────────────────────
-  const bySign = {};
-  for (const p of keys) {
-    const lon  = ((getLon(positions[p]) % 360) + 360) % 360;
-    const sign = Math.floor(lon / 30);
-    (bySign[sign] = bySign[sign] || []).push(p);
-  }
-  for (const [signIdx, planets] of Object.entries(bySign)) {
-    if (planets.length >= 3) {
-      patterns.push({
-        id: `Stellium-${signIdx}`,
-        type: 'Stellium',
-        planets,
-        description: `${planets.length} planets in ${SIGN_NAMES[signIdx]}`,
-        focus: `Concentrated energy in ${SIGN_NAMES[signIdx]}`,
-      });
-    }
-  }
 
   // ── 2. Grand Trine ────────────────────────────────────────────────────────────
   const gtIds    = new Set();
@@ -278,14 +296,12 @@ export function detectPatterns(positions) {
   }
 
   // ── 6. Mystic Rectangle ───────────────────────────────────────────────────────
-  // Structure: two oppositions cross as diagonals; the rectangle sides
-  // alternate trine-sextile-trine-sextile (long = trine, short = sextile or vice-versa)
   const mrIds = new Set();
 
   for (let i = 0; i < oppositions.length; i++) {
     for (let j = i + 1; j < oppositions.length; j++) {
-      const { p1: A, p2: C } = oppositions[i]; // diagonal A—C
-      const { p1: B, p2: D } = oppositions[j]; // diagonal B—D
+      const { p1: A, p2: C } = oppositions[i];
+      const { p1: B, p2: D } = oppositions[j];
 
       if (new Set([A,B,C,D]).size !== 4) continue;
 
@@ -296,7 +312,6 @@ export function detectPatterns(positions) {
         const sideDA = has('trine',d,A) ? 'trine' : has('sextile',d,A) ? 'sextile' : null;
 
         if (!sideAB || !sideBC || !sideCD || !sideDA) continue;
-        // Must alternate: AB≠BC, BC≠CD, CD≠DA
         if (sideAB === sideBC || sideBC === sideCD || sideCD === sideDA) continue;
 
         const id = `MR-${[A,b,C,d].sort().join('-')}`;
@@ -335,20 +350,19 @@ export function detectPatterns(positions) {
         focus: 'A fated calling — karmic adjustment through the apex planet',
       };
       yodList.push(yod);
+      patterns.push(yod);
     }
   }
 
-  // ── 8. Boomerang Yod (Yod + planet opposing the apex) ────────────────────────
+  // ── 8. Boomerang Yod ─────────────────────────────────────────────────────────
   for (const yod of yodList) {
     const { apex, planets } = yod;
     const base = planets.filter(p => p !== apex);
-    let isBoomerang = false;
     for (const k of keys) {
       if (planets.includes(k)) continue;
       if (!has('opposition', apex, k)) continue;
       if (!has('sextile', k, base[0]) && !has('sextile', k, base[1])) continue;
 
-      isBoomerang = true;
       patterns.push({
         id: `Boomerang-${[...planets, k].sort().join('-')}`,
         type: 'Boomerang Yod',
@@ -356,9 +370,6 @@ export function detectPatterns(positions) {
         description: `Yod (${base.join(', ')} → ${apex}) redirected through ${k}`,
         focus: 'Extreme fated tension bouncing between apex and redirector',
       });
-    }
-    if (!isBoomerang) {
-      patterns.push(yod);
     }
   }
 
@@ -385,24 +396,4 @@ export function detectPatterns(positions) {
   }
 
   return patterns;
-}
-
-// ─── Element / modality helpers ───────────────────────────────────────────────
-
-const SIGN_ELEMENT  = ['fire','earth','air','water','fire','earth','air','water','fire','earth','air','water'];
-const SIGN_MODALITY = ['cardinal','fixed','mutable','cardinal','fixed','mutable','cardinal','fixed','mutable','cardinal','fixed','mutable'];
-
-function signIdx(positions, planet) {
-  const lon = ((getLon(positions[planet]) % 360) + 360) % 360;
-  return Math.floor(lon / 30);
-}
-
-function sharedElement(positions, planets) {
-  const elems = [...new Set(planets.map(p => SIGN_ELEMENT[signIdx(positions, p)]))];
-  return elems.length === 1 ? elems[0] : null;
-}
-
-function sharedModality(positions, planets) {
-  const mods = [...new Set(planets.map(p => SIGN_MODALITY[signIdx(positions, p)]))];
-  return mods.length === 1 ? mods[0] : null;
 }
