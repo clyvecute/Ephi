@@ -3,6 +3,19 @@ import { UiIcon } from '../components/EphiIcons';
 
 export default function SupportPage() {
   const [activeMethod, setActiveMethod] = useState('info');
+  const [copiedText, setCopiedText] = useState('');
+
+  const handleCopyAddress = (address) => {
+    navigator.clipboard.writeText(address);
+    setCopiedText(address);
+    setTimeout(() => setCopiedText(''), 2000);
+  };
+
+  const cryptoWallets = [
+    { token: 'USDT', network: 'TRC-20 / Tron Network', address: import.meta.env.VITE_WALLET_USDT_TRC20, color: '#26A17B', symbol: '🟢' },
+    { token: 'ETH / USDT', network: 'ERC-20 / Ethereum Network', address: import.meta.env.VITE_WALLET_ETH, color: '#627EEA', symbol: '🔷' },
+    { token: 'BTC', network: 'Bitcoin Network', address: import.meta.env.VITE_WALLET_BTC, color: '#F7931A', symbol: '🟠' }
+  ].filter(w => w.address);
 
   const methods = [
     {
@@ -10,8 +23,8 @@ export default function SupportPage() {
       name: 'PayPal',
       icon: 'sparkle',
       desc: 'International support via PayPal.',
-      instruction: 'To stay anonymous, use a PayPal Business account with a business name (e.g., "Ephi Astrology") instead of a Personal account.',
-      link: 'https://paypal.me/jellyephi'
+      instruction: 'Supports international transfers and secure payments via PayPal.',
+      link: import.meta.env.VITE_PAYPAL_URL || 'https://paypal.me/jellyephi'
     },
     {
       id: 'kofi',
@@ -19,34 +32,23 @@ export default function SupportPage() {
       icon: 'star',
       desc: 'The best way to stay anonymous.',
       instruction: 'Platforms like Ko-fi act as a buffer. You can use a username and your donors will not see your bank details or legal name.',
-      link: 'https://ko-fi.com/jellyephi'
+      link: import.meta.env.VITE_KOFI_URL || 'https://ko-fi.com/cheshire_catt'
     },
     {
       id: 'paymongo',
-      name: 'PayMongo (PH Card/GCash)',
+      name: 'PayMongo (Card / Local Payments)',
       icon: 'sparkle',
       desc: 'Local card and e-wallet payments.',
-      instruction: 'PayMongo is the Philippine alternative to Stripe. It supports Credit Cards, GCash, Maya, and GrabPay. You can set up a "Payment Link" to receive support securely.',
+      instruction: 'PayMongo supports Credit Cards, GrabPay, and other local e-wallets. You can set up a "Payment Link" to receive support securely.',
       link: 'https://paymongo.page/l/example'
     },
-    {
-      id: 'gcash',
-      name: 'GCash / Maya',
-      icon: 'star',
-      desc: 'Direct e-wallet transfer (PH).',
-      instruction: 'The most convenient way for local supporters. You can display your GCash/Maya number or a QR code here.',
-      details: 'GCash: [YOUR_GCASH_NUMBER]\nMaya: [YOUR_MAYA_NUMBER]',
-      qrUrl: '/qrs/gcash_maya.png' // Placeholder for QR image
-    },
-    {
-      id: 'bank',
-      name: 'GoTyme / Local Bank',
-      icon: 'gear',
-      desc: 'Direct bank transfer (Local PH).',
-      instruction: 'You can share your Account Number or QR Code here. Note: Banks usually show the account holder name for verification.',
-      details: 'Account Number: [YOUR_ACCOUNT_NUMBER]\nBank: GoTyme Bank',
-      qrUrl: '/qrs/gotyme.png' // Placeholder for QR image
-    }
+    ...(cryptoWallets.length > 0 ? [{
+      id: 'crypto',
+      name: 'Cryptocurrency',
+      icon: 'sparkle',
+      desc: 'USDT, ETH, and BTC support.',
+      instruction: 'Make sure to send the correct token on the correct network. Sending tokens to the wrong network will result in permanent loss of funds.'
+    }] : [])
   ];
 
   return (
@@ -139,7 +141,52 @@ export default function SupportPage() {
                 {methods.find(m => m.id === activeMethod).instruction}
               </p>
               
-              {methods.find(m => m.id === activeMethod).details && (
+              {activeMethod === 'crypto' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem', textAlign: 'left' }}>
+                  {cryptoWallets.map((wallet, idx) => (
+                    <div key={idx} style={{ 
+                      background: 'var(--bg-deep)', 
+                      padding: '1.25rem', 
+                      borderRadius: 'var(--radius-md)', 
+                      border: '1px solid var(--border)',
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <span style={{ fontSize: '1rem' }}>{wallet.symbol}</span>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 800, color: wallet.color }}>{wallet.token}</span>
+                          <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', background: 'var(--border)', padding: '2px 6px', borderRadius: '4px' }}>{wallet.network}</span>
+                        </div>
+                        <button 
+                          onClick={() => handleCopyAddress(wallet.address)}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: copiedText === wallet.address ? 'var(--harmonic)' : 'var(--text-secondary)',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <UiIcon name={copiedText === wallet.address ? 'sparkle' : 'gear'} size={12} />
+                          {copiedText === wallet.address ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                      <div style={{ 
+                        fontFamily: 'monospace', 
+                        fontSize: '0.85rem', 
+                        wordBreak: 'break-all', 
+                        color: 'var(--text-primary)' 
+                      }}>
+                        {wallet.address}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {activeMethod !== 'crypto' && methods.find(m => m.id === activeMethod).details && (
                 <div style={{ 
                   background: 'var(--bg-deep)', 
                   padding: '1.5rem', 

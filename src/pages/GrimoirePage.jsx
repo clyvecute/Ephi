@@ -231,65 +231,79 @@ export default function GrimoirePage() {
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
-        
-        {/* Left Column: Library */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          <div className="ephi-card" style={{ padding: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
-              <UiIcon name="pin" size={20} color="var(--accent)" />
-              <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Bound References</h2>
-            </div>
-            
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              {Object.entries(TOOL_LABELS).map(([key, label]) => (
-                <div key={key} style={{ 
-                  padding: '1.25rem', 
-                  background: 'rgba(255,255,255,0.02)', 
-                  border: '1px solid var(--border)', 
-                  borderRadius: '12px',
-                  transition: 'all 0.3s ease'
-                }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
-                      {label}
-                    </span>
-                    {lib[key] && Array.isArray(lib[key]) && lib[key].length > 0 && (
-                      <button 
-                        onClick={() => { removeFromLibrary(key); setLib(getLibrary()); }}
-                        style={{ background: 'none', border: 'none', color: 'var(--tense)', fontSize: '0.7rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                      >
-                        Unbind All
-                      </button>
-                    )}
-                  </div>
+      {!isSysArchive && (
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+          
+          {/* Left Column: Library */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <div className="ephi-card" style={{ padding: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '2rem' }}>
+                <UiIcon name="pin" size={20} color="var(--accent)" />
+                <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Bound References</h2>
+              </div>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {Object.entries(TOOL_LABELS).map(([key, label]) => (
+                  <div key={key} style={{ 
+                    padding: '1.25rem', 
+                    background: 'rgba(255,255,255,0.02)', 
+                    border: '1px solid var(--border)', 
+                    borderRadius: '12px',
+                    transition: 'all 0.3s ease'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                      <span style={{ fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)' }}>
+                        {label}
+                      </span>
+                      {lib[key] && Array.isArray(lib[key]) && lib[key].length > 0 && (
+                        <button 
+                          onClick={() => { removeFromLibrary(key); setLib(getLibrary()); }}
+                          style={{ background: 'none', border: 'none', color: 'var(--tense)', fontSize: '0.7rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                        >
+                          Unbind All
+                        </button>
+                      )}
+                    </div>
 
-                  {lib[key] && Array.isArray(lib[key]) && lib[key].length > 0 ? (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                      {lib[key].map((item, idx) => (
-                        <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ padding: '8px', background: 'var(--bg-deep)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                            <UiIcon name="sparkle" size={14} color="var(--accent)" />
-                          </div>
-                          <div style={{ flex: 1, overflow: 'hidden' }}>
-                            <div style={{ fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {item.name}
+                    {lib[key] && Array.isArray(lib[key]) && lib[key].length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {lib[key].map((item, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            <div style={{ padding: '8px', background: 'var(--bg-deep)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                              <UiIcon name="sparkle" size={14} color="var(--accent)" />
                             </div>
-                            <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                              {item.uri}
+                            <div style={{ flex: 1, overflow: 'hidden' }}>
+                              <div style={{ fontSize: '0.9rem', fontWeight: '600', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.name}
+                              </div>
+                              <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {item.uri}
+                              </div>
                             </div>
+                            <button 
+                              onClick={() => { removeFromLibrary(key, idx); setLib(getLibrary()); }}
+                              style={{ background: 'none', border: 'none', color: 'var(--tense)', fontSize: '0.7rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                            >
+                              Unbind
+                            </button>
                           </div>
-                          <button 
-                            onClick={() => { removeFromLibrary(key, idx); setLib(getLibrary()); }}
-                            style={{ background: 'none', border: 'none', color: 'var(--tense)', fontSize: '0.7rem', cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.05em' }}
-                          >
-                            Unbind
-                          </button>
+                        ))}
+                        <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                          <label className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '8px 16px', cursor: 'pointer' }}>
+                            Add Another File
+                            <input 
+                              type="file" 
+                              accept=".pdf" 
+                              onChange={(e) => handleFileChange(key, e)}
+                              style={{ display: 'none' }} 
+                            />
+                          </label>
                         </div>
-                      ))}
-                      <div style={{ marginTop: '0.5rem', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                         <label className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '8px 16px', cursor: 'pointer' }}>
-                          Add Another File
+                          Set File
                           <input 
                             type="file" 
                             accept=".pdf" 
@@ -297,214 +311,202 @@ export default function GrimoirePage() {
                             style={{ display: 'none' }} 
                           />
                         </label>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No reference bound</span>
                       </div>
-                    </div>
-                  ) : (
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                      <label className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '8px 16px', cursor: 'pointer' }}>
-                        Set File
-                        <input 
-                          type="file" 
-                          accept=".pdf" 
-                          onChange={(e) => handleFileChange(key, e)}
-                          style={{ display: 'none' }} 
-                        />
-                      </label>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>No reference bound</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Right Column: Config & Tools */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          
-          {/* Manual URI Binding */}
-          <div className="ephi-card" style={{ padding: '2rem', borderLeft: '4px solid var(--accent)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <UiIcon name="gear" size={20} color="var(--accent)" />
-              <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Gemini RAG Binding</h2>
-            </div>
-            
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-              If you have uploaded a PDF to the Gemini File API via script, paste the <strong>File URI</strong> below to bind it to a specific tool.
-            </p>
-
-            <form onSubmit={handleSaveUri}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Target Tool</label>
-                <select 
-                  value={selectedTool} 
-                  onChange={(e) => setSelectedTool(e.target.value)}
-                  style={{ width: '100%', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', outline: 'none' }}
-                >
-                  {Object.entries(TOOL_LABELS).map(([k, v]) => (
-                    <option key={k} value={k}>{v}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>File URI</label>
-                <input 
-                  type="text" 
-                  value={manualUri}
-                  onChange={(e) => setManualUri(e.target.value)}
-                  placeholder="https://generativelanguage.googleapis.com/v1beta/files/..."
-                  style={{ width: '100%', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
-                />
-              </div>
-
-              <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-                Bind Reference
-              </button>
-            </form>
-          </div>
-
-          {/* Oracle Provider */}
-          <div className="ephi-card" style={{ padding: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <UiIcon name="gear" size={20} color="var(--accent)" />
-              <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Oracle Engine</h2>
-            </div>
-            
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-              Select the intelligence engine powering your interpretations.
-            </p>
-
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <button
-                onClick={() => handleProviderChange('google')}
-                className={`btn ${oracleProvider === 'google' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
-              >
-                Google Gemini
-              </button>
-              <button
-                onClick={() => handleProviderChange('groq')}
-                className={`btn ${oracleProvider === 'groq' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
-              >
-                Groq (Llama 3)
-              </button>
-              <button
-                onClick={() => handleProviderChange('openai')}
-                className={`btn ${oracleProvider === 'openai' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
-              >
-                OpenAI (GPT-4o)
-              </button>
-            </div>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
-              * Ensure the respective API key is set in your <code>.env</code> file.
-            </p>
-          </div>
-
-          {/* Oracle Persona */}
-          <div className="ephi-card" style={{ padding: '2rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <UiIcon name="sparkle" size={20} color="var(--accent)" />
-              <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Oracle Persona</h2>
-            </div>
-            
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-              Choose the archetypal voice and tone for your AI interpretations.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-              {Object.entries(PERSONAS).map(([id, p]) => (
-                <button
-                  key={id}
-                  onClick={() => handlePersonaChange(id)}
-                  className={`card ${persona === id ? 'active' : ''}`}
-                  style={{ 
-                    padding: '1rem', 
-                    textAlign: 'left', 
-                    background: persona === id ? 'rgba(255,255,255,0.03)' : 'transparent',
-                    borderColor: persona === id ? 'var(--accent)' : 'var(--border)',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
-                    <UiIcon name={p.icon} size={14} color={persona === id ? 'var(--accent)' : 'var(--text-muted)'} />
-                    <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{p.label}</span>
+                    )}
                   </div>
-                  <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.desc}</div>
-                </button>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Purist Mode / AI Opt-out */}
-          <div className="ephi-card" style={{ padding: '2rem', border: puristMode ? '1px solid var(--tense)' : '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              <UiIcon name="gear" size={20} color={puristMode ? 'var(--tense)' : 'var(--accent)'} />
-              <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Purist Mode</h2>
-            </div>
+          {/* Right Column: Config & Tools */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
-              If you prefer traditional data over AI synthesis, activate Purist Mode. This hides all AI "Generate" buttons and synthesis features globally.
-            </p>
-
-            <button
-              onClick={() => handleTogglePurist(!puristMode)}
-              className={`btn ${puristMode ? 'btn-primary' : 'btn-ghost'}`}
-              style={{ 
-                width: '100%', 
-                background: puristMode ? 'var(--tense)' : 'transparent',
-                borderColor: puristMode ? 'var(--tense)' : 'var(--border)',
-                color: puristMode ? '#fff' : 'var(--text-primary)'
-              }}
-            >
-              {puristMode ? 'Deactivate Purist Mode' : 'Activate Purist Mode'}
-            </button>
-          </div>
-
-          {/* Storage Management */}
-          <div className="ephi-card" style={{ padding: '2rem' }}>
-            <h2 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', letterSpacing: '0.05em' }}>Memory & Privacy</h2>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Local Cache Size:</span>
-                <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{stats.total} readings</span>
+            {/* Manual URI Binding */}
+            <div className="ephi-card" style={{ padding: '2rem', borderLeft: '4px solid var(--accent)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <UiIcon name="gear" size={20} color="var(--accent)" />
+                <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Gemini RAG Binding</h2>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Active Bindings:</span>
-                <span style={{ fontWeight: 800 }}>{Object.keys(lib).length}</span>
-              </div>
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <button 
-                  className="btn btn-primary" 
-                  style={{ width: '100%' }}
-                  onClick={handleExport}
-                >
-                  <UiIcon name="pin" size={14} style={{ marginRight: 8 }} />
-                  Export Archive (JSON)
-                </button>
-                
-                <label className="btn btn-ghost" style={{ width: '100%', cursor: 'pointer' }}>
-                  <UiIcon name="gear" size={14} style={{ marginRight: 8 }} />
-                  Restore from Backup
-                  <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
-                </label>
+              
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                If you have uploaded a PDF to the Gemini File API via script, paste the <strong>File URI</strong> below to bind it to a specific tool.
+              </p>
 
-                <button 
-                  className="btn btn-ghost" 
-                  style={{ width: '100%', color: 'var(--tense)', borderColor: 'var(--tense)', marginTop: '1rem' }}
-                  onClick={handleClearCache}
-                >
-                  Clear All Data & Logout
+              <form onSubmit={handleSaveUri}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Target Tool</label>
+                  <select 
+                    value={selectedTool} 
+                    onChange={(e) => setSelectedTool(e.target.value)}
+                    style={{ width: '100%', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', outline: 'none' }}
+                  >
+                    {Object.entries(TOOL_LABELS).map(([k, v]) => (
+                      <option key={k} value={k}>{v}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ fontSize: '0.7rem', textTransform: 'uppercase', letterSpacing: '0.1em', display: 'block', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>File URI</label>
+                  <input 
+                    type="text" 
+                    value={manualUri}
+                    onChange={(e) => setManualUri(e.target.value)}
+                    placeholder="https://generativelanguage.googleapis.com/v1beta/files/..."
+                    style={{ width: '100%', background: 'var(--bg-deep)', border: '1px solid var(--border)', borderRadius: '8px', padding: '12px', color: 'var(--text-primary)', outline: 'none', fontSize: '0.85rem' }}
+                  />
+                </div>
+
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
+                  Bind Reference
                 </button>
+              </form>
+            </div>
+
+            {/* Oracle Engine */}
+            <div className="ephi-card" style={{ padding: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <UiIcon name="gear" size={20} color="var(--accent)" />
+                <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Oracle Engine</h2>
+              </div>
+              
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                Select the intelligence engine powering your interpretations.
+              </p>
+
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button
+                  onClick={() => handleProviderChange('google')}
+                  className={`btn ${oracleProvider === 'google' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
+                >
+                  Google Gemini
+                </button>
+                <button
+                  onClick={() => handleProviderChange('groq')}
+                  className={`btn ${oracleProvider === 'groq' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
+                >
+                  Groq (Llama 3)
+                </button>
+                <button
+                  onClick={() => handleProviderChange('openai')}
+                  className={`btn ${oracleProvider === 'openai' ? 'btn-primary' : 'btn-ghost'}`}
+                  style={{ flex: 1, fontSize: '0.75rem', padding: '8px 4px' }}
+                >
+                  OpenAI (GPT-4o)
+                </button>
+              </div>
+              <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
+                * Ensure the respective API key is set in your <code>.env</code> file.
+              </p>
+            </div>
+
+            {/* Oracle Persona */}
+            <div className="ephi-card" style={{ padding: '2rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <UiIcon name="sparkle" size={20} color="var(--accent)" />
+                <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Oracle Persona</h2>
+              </div>
+              
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                Choose the archetypal voice and tone for your AI interpretations.
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {Object.entries(PERSONAS).map(([id, p]) => (
+                  <button
+                    key={id}
+                    onClick={() => handlePersonaChange(id)}
+                    className={`card ${persona === id ? 'active' : ''}`}
+                    style={{ 
+                      padding: '1rem', 
+                      textAlign: 'left', 
+                      background: persona === id ? 'rgba(255,255,255,0.03)' : 'transparent',
+                      borderColor: persona === id ? 'var(--accent)' : 'var(--border)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.25rem' }}>
+                      <UiIcon name={p.icon} size={14} color={persona === id ? 'var(--accent)' : 'var(--text-muted)'} />
+                      <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>{p.label}</span>
+                    </div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>{p.desc}</div>
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
 
+            {/* Purist Mode / AI Opt-out */}
+            <div className="ephi-card" style={{ padding: '2rem', border: puristMode ? '1px solid var(--tense)' : '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                <UiIcon name="gear" size={20} color={puristMode ? 'var(--tense)' : 'var(--accent)'} />
+                <h2 style={{ fontSize: '1.2rem', margin: 0, letterSpacing: '0.05em' }}>Purist Mode</h2>
+              </div>
+              
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', lineHeight: 1.6 }}>
+                If you prefer traditional data over AI synthesis, activate Purist Mode. This hides all AI "Generate" buttons and synthesis features globally.
+              </p>
+
+              <button
+                onClick={() => handleTogglePurist(!puristMode)}
+                className={`btn ${puristMode ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ 
+                  width: '100%', 
+                  background: puristMode ? 'var(--tense)' : 'transparent',
+                  borderColor: puristMode ? 'var(--tense)' : 'var(--border)',
+                  color: puristMode ? '#fff' : 'var(--text-primary)'
+                }}
+              >
+                {puristMode ? 'Deactivate Purist Mode' : 'Activate Purist Mode'}
+              </button>
+            </div>
+
+            {/* Storage Management */}
+            <div className="ephi-card" style={{ padding: '2rem' }}>
+              <h2 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', letterSpacing: '0.05em' }}>Memory & Privacy</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Local Cache Size:</span>
+                  <span style={{ fontWeight: 800, color: 'var(--accent)' }}>{stats.total} readings</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Active Bindings:</span>
+                  <span style={{ fontWeight: 800 }}>{Object.keys(lib).length}</span>
+                </div>
+                <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ width: '100%' }}
+                    onClick={handleExport}
+                  >
+                    <UiIcon name="pin" size={14} style={{ marginRight: 8 }} />
+                    Export Archive (JSON)
+                  </button>
+                  
+                  <label className="btn btn-ghost" style={{ width: '100%', cursor: 'pointer' }}>
+                    <UiIcon name="gear" size={14} style={{ marginRight: 8 }} />
+                    Restore from Backup
+                    <input type="file" accept=".json" onChange={handleImport} style={{ display: 'none' }} />
+                  </label>
+
+                  <button 
+                    className="btn btn-ghost" 
+                    style={{ width: '100%', color: 'var(--tense)', borderColor: 'var(--tense)', marginTop: '1rem' }}
+                    onClick={handleClearCache}
+                  >
+                    Clear All Data & Logout
+                  </button>
+                </div>
+              </div>
+            </div>
+
+          </div>
         </div>
-      </div>
+      )}
 
       {/* --- System Observatory (Monitoring) --- */}
       <div style={{ marginTop: '4rem', paddingTop: '4rem', borderTop: '1px solid var(--border)' }}>
@@ -564,13 +566,15 @@ export default function GrimoirePage() {
               {Object.entries(lib).length === 0 ? (
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>No references bound.</span>
               ) : (
-                Object.entries(lib).map(([k, v]) => (
-                  <div key={k} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
-                    <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: v.uri === 'pending_upload' ? 'var(--tense)' : 'var(--harmonic)' }} />
-                    <span style={{ fontWeight: 600 }}>{TOOL_LABELS[k]}:</span>
-                    <span style={{ color: 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>{v.name}</span>
-                  </div>
-                ))
+                Object.entries(lib).map(([k, items]) =>
+                  Array.isArray(items) && items.map((v, idx) => (
+                    <div key={`${k}-${idx}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.75rem' }}>
+                      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: v.uri === 'pending_upload' ? 'var(--tense)' : 'var(--harmonic)' }} />
+                      <span style={{ fontWeight: 600 }}>{TOOL_LABELS[k] || k}:</span>
+                      <span style={{ color: 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', flex: 1 }}>{v.name}</span>
+                    </div>
+                  ))
+                )
               )}
             </div>
           </div>

@@ -5,7 +5,7 @@ export default function FaqPage() {
   const faqs = [
     {
       q: "Is my data private?",
-      a: "Yes. Ephi is a local-first application. Your birth data, uploaded books, and AI readings are stored entirely within your browser's LocalStorage. They are never sent to a central Ephi server. The only external communication is a secure link to Gemini for synthesis."
+      a: "Yes. Ephi is a local-first application. Your birth data, uploaded books, and AI readings are primarily stored within your browser's LocalStorage. When you sign in with Google, your charts and library securely sync with Firebase Firestore for cross-device access, remaining completely private to your account. The only other external communication is a secure link to Gemini for AI synthesis."
     },
     {
       q: "Can I use my own astrology books as references?",

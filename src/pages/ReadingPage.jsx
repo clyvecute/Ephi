@@ -16,7 +16,7 @@ import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import { getPlanetPositions } from '../lib/ephemeris';
 import { getActiveAspects } from '../lib/aspects';
 import EphiMarkdown from '../components/EphiMarkdown';
-import ChartWheel from '../components/AstroChartWheel.jsx';
+import { NatalWheel as ChartWheel } from '../components/AstroChartWheel.jsx';
 import { generateAspectReading } from '../lib/oracle';
 import AdSlot from '../components/AdSlot.jsx';
 import { store } from '../lib/store';

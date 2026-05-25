@@ -99,13 +99,13 @@ export default function NatalSummary({ chart, onClear }) {
   const ascSignIndex = chart.risingSign ? SIGNS.indexOf(chart.risingSign) : null;
 
   const bazi = useMemo(() => {
-    const d = new Date(meta.date + 'T' + meta.time);
+    const d = new Date(meta.date.replace(/-/g, '/') + ' ' + meta.time);
     return calculateBaZi(d);
   }, [meta.date, meta.time]);
 
   // Calculate alternate system for side-by-side comparison
   const alternatePositions = useMemo(() => {
-    const d = new Date(meta.date + 'T' + meta.time);
+    const d = new Date(meta.date.replace(/-/g, '/') + ' ' + meta.time);
     const altOptions = { sidereal: !isSidereal, lat: meta.lat, lon: meta.lon };
     // We need to approximate Asc for the alternate system too if we want Part of Fortune etc.
     // For now, let's just get the raw planetary longitudes
@@ -146,8 +146,10 @@ export default function NatalSummary({ chart, onClear }) {
     if (!positions) return {};
     const res = {};
     Object.keys(positions).forEach(p => {
+      const val = positions[p];
+      if (val == null) return;
       // Ensure we pass the raw longitude number
-      const lon = typeof positions[p] === 'number' ? positions[p] : positions[p].longitude;
+      const lon = typeof val === 'number' ? val : (val.longitude ?? 0);
       res[p] = calculateDignity(p, lon, meta.isDay);
     });
     return res;
@@ -159,7 +161,11 @@ export default function NatalSummary({ chart, onClear }) {
     const ascLon = chart.houses?.[0]?.longitude ?? chart.ascendant?.longitude;
     if (ascLon == null) return null;
 
-    const getLon = (p) => typeof positions[p] === 'number' ? positions[p] : positions[p].longitude;
+    const getLon = (p) => {
+      const val = positions[p];
+      if (val == null) return 0;
+      return typeof val === 'number' ? val : (val.longitude ?? 0);
+    };
 
     return calculateLots(
       ascLon,

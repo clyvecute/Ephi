@@ -22,7 +22,7 @@ export default function AboutPage() {
             Ephi provides a silent, midnight space for reflection.
           </p>
           <p style={{ color: 'var(--text-secondary)', lineHeight: '1.8', fontSize: '1.1rem' }}>
-            By utilizing the **Swiss Ephemeris** for precision and **Large Language Models** 
+            By utilizing the <strong>Swiss Ephemeris</strong> for precision and <strong>Large Language Models</strong> 
             for synthesis, we provide tools that help you translate mathematical geometry 
             into human insight.
           </p>

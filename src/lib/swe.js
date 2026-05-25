@@ -76,6 +76,7 @@ export async function initSwe() {
         houses:    typeof mod._swe_houses      === 'function' ? 'swe_houses'      : 'swe_houses_wrap',
         rise_trans:typeof mod._swe_rise_trans  === 'function' ? 'swe_rise_trans'  : 'swe_rise_trans_wrap',
         version:   typeof mod._swe_version     === 'function' ? 'swe_version'     : 'swe_version_wrap',
+        set_sid_mode: typeof mod._swe_set_sid_mode === 'function' ? 'swe_set_sid_mode' : 'swe_set_sid_mode_wrap',
       };
       // Make the probe visible for debugging
       console.log('[SWE] Detected function names:', FN);
@@ -98,7 +99,7 @@ export async function initSwe() {
       mod.__FN = FN;
 
       // Set Lahiri ayanamsa explicitly
-      mod.ccall('swe_set_sid_mode', null, ['number','number','number'],
+      mod.ccall(FN.set_sid_mode, null, ['number','number','number'],
         [SE_SIDM_LAHIRI, 0, 0]);
 
       const version = _swe_version();
