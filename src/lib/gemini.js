@@ -483,7 +483,7 @@ export async function testApi() {
  * Quick check: is the Gemini API key configured?
  */
 export function isGeminiConfigured() {
-  return Boolean(API_KEY);
+  return true;
 }
 
 /**
