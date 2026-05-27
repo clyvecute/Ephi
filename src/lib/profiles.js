@@ -54,10 +54,14 @@ function syncLegacyAndCloud(profiles, activeId) {
   }
   if (auth.currentUser) {
     const ref = doc(db, 'users', auth.currentUser.uid, 'data', 'natal_profiles');
-    setDoc(ref, { profiles, activeId: activeId || null }, { merge: true }).catch(console.error);
-    if (active?.chart) {
+    // Strip undefined values for Firestore compatibility
+    const cleanProfiles = JSON.parse(JSON.stringify(profiles));
+    const cleanActiveChart = active?.chart ? JSON.parse(JSON.stringify(active.chart)) : null;
+
+    setDoc(ref, { profiles: cleanProfiles, activeId: activeId || null }, { merge: true }).catch(console.error);
+    if (cleanActiveChart) {
       const natalRef = doc(db, 'users', auth.currentUser.uid, 'data', 'natal');
-      setDoc(natalRef, active.chart).catch(console.error);
+      setDoc(natalRef, cleanActiveChart).catch(console.error);
     }
   }
 }

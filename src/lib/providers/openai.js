@@ -17,30 +17,27 @@ import {
   DEG_IN_SIGN
 } from '../gemini';
 
-const API_KEY = import.meta.env.VITE_OPENAI_API_KEY;
-
 /**
- * Standard fetch interface for OpenAI Chat Completions.
+ * Standard fetch interface for OpenAI via the server proxy.
  */
 async function callOpenAI(prompt, maxTokens = 2000, model = 'gpt-4o-mini') {
-  if (!API_KEY) {
-    throw new Error('OpenAI API key not found. Add VITE_OPENAI_API_KEY to your env variables.');
-  }
+  const headers = { 'Content-Type': 'application/json' };
 
-  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+  try {
+    const { auth } = await import('../firebase');
+    if (auth.currentUser) {
+      headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+    }
+  } catch {}
+
+  const res = await fetch('/api/oracle', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    },
+    headers,
     body: JSON.stringify({
+      provider: 'openai',
+      prompt,
       model,
-      messages: [
-        { role: 'system', content: 'You are Antigravity, an elite consultant astrologer.' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.85,
-      max_tokens: maxTokens
+      maxTokens,
     })
   });
 
@@ -50,7 +47,7 @@ async function callOpenAI(prompt, maxTokens = 2000, model = 'gpt-4o-mini') {
   }
 
   const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content;
+  const text = data?.text;
   if (!text) throw new Error('OpenAI returned an empty response.');
   return text.trim();
 }
@@ -312,7 +309,7 @@ Tone: Sophisticated, technical yet accessible, deeply insightful, and objective.
  * Check if the OpenAI credentials are ready.
  */
 export function isOpenAIConfigured() {
-  return Boolean(API_KEY);
+  return true;
 }
 
 /**

@@ -22,8 +22,16 @@ export default function ReturnsPage() {
   const [aiError, setAiError] = useState('');
   const [aiReading, setAiReading] = useState('');
 
+  const getNatalLon = (key) => {
+    const p = natal?.positions || {};
+    const val = p[key] ?? p[key.charAt(0).toUpperCase() + key.slice(1)];
+    if (val == null) return null;
+    return typeof val === 'object' ? val.longitude : val;
+  };
+
   const calculateReturn = async () => {
-    if (!natal?.positions?.sun) {
+    const sunLon = getNatalLon('sun');
+    if (sunLon == null) {
       setError('Please configure your natal chart first.');
       return;
     }
@@ -36,10 +44,13 @@ export default function ReturnsPage() {
       const isSidereal = !!natal.meta.sidereal;
 
       if (mode === 'solar') {
-        const sunLon = natal.positions.sun.longitude ?? natal.positions.sun;
         result = await findSolarReturn(sunLon, parseInt(year), natal.meta.lat, natal.meta.lon, isSidereal);
       } else if (mode === 'lunar') {
-        const moonLon = natal.positions.moon.longitude ?? natal.positions.moon;
+        const moonLon = getNatalLon('moon');
+        if (moonLon == null) {
+          setError('Moon position not found in natal chart.');
+          return;
+        }
         result = await findLunarReturn(moonLon, new Date(), isSidereal);
       }
       setReturnChart(result);

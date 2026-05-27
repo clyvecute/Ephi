@@ -17,30 +17,27 @@ import {
   DEG_IN_SIGN
 } from '../gemini';
 
-const API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-
 /**
- * Standard fetch interface for Groq Completions (OpenAI Compatible API).
+ * Standard fetch interface for Groq via the server proxy.
  */
 async function callGroq(prompt, maxTokens = 2000, model = 'llama-3.3-70b-versatile') {
-  if (!API_KEY) {
-    throw new Error('Groq API key not found. Add VITE_GROQ_API_KEY to your env variables.');
-  }
+  const headers = { 'Content-Type': 'application/json' };
 
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  try {
+    const { auth } = await import('../firebase');
+    if (auth.currentUser) {
+      headers.Authorization = `Bearer ${await auth.currentUser.getIdToken()}`;
+    }
+  } catch {}
+
+  const res = await fetch('/api/oracle', {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${API_KEY}`
-    },
+    headers,
     body: JSON.stringify({
+      provider: 'groq',
+      prompt,
       model,
-      messages: [
-        { role: 'system', content: 'You are Antigravity, an elite consultant astrologer.' },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.85,
-      max_tokens: maxTokens
+      maxTokens,
     })
   });
 
@@ -50,7 +47,7 @@ async function callGroq(prompt, maxTokens = 2000, model = 'llama-3.3-70b-versati
   }
 
   const data = await res.json();
-  const text = data?.choices?.[0]?.message?.content;
+  const text = data?.text;
   if (!text) throw new Error('Groq returned an empty response.');
   return text.trim();
 }
@@ -312,7 +309,7 @@ Tone: Sophisticated, technical yet accessible, deeply insightful, and objective.
  * Check if Groq is fully ready.
  */
 export function isGroqConfigured() {
-  return Boolean(API_KEY);
+  return true;
 }
 
 /**

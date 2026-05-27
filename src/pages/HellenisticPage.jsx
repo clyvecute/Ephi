@@ -23,8 +23,15 @@ export default function HellenisticPage() {
         return;
       }
 
-      const ascLon = parsed.ascendant?.longitude ?? parsed.positions.sun.longitude;
-      const birthDate = parsed.meta.date;
+      const p = parsed.positions || {};
+      const getLon = (key) => {
+        const val = p[key] ?? p[key.charAt(0).toUpperCase() + key.slice(1)];
+        if (val == null) return 0;
+        return typeof val === 'object' ? val.longitude : val;
+      };
+
+      const ascLon = parsed.ascendant?.longitude ?? parsed.ascendant ?? getLon('sun');
+      const birthDate = parsed.meta?.date;
 
       // Profections
       const prof = calculateProfections(ascLon, birthDate);
@@ -36,7 +43,7 @@ export default function HellenisticPage() {
 
       // Determine if day/night chart (Sun above horizon)
       // In Equal houses, Sun in 7-12 is above horizon
-      const sunLon = parsed.positions.sun.longitude ?? parsed.positions.sun;
+      const sunLon = getLon('sun');
       const sunSignIdx = Math.floor(sunLon / 30);
       const ascSignIdx = Math.floor(ascLon / 30);
       const sunHouse = (sunSignIdx - ascSignIdx + 12) % 12 + 1;
@@ -48,8 +55,6 @@ export default function HellenisticPage() {
       setFirdaria(fir);
 
       // Lots
-      const p = parsed.positions;
-      const getLon = (key) => typeof p[key] === 'number' ? p[key] : p[key].longitude;
       const hermeticLots = calculateLots(
         ascLon,
         getLon('sun'),

@@ -3,8 +3,12 @@
 // The Gemini API key is stored as a Vercel Environment Variable (never exposed to client)
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const PRIMARY_MODEL   = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
-const FALLBACK_MODEL  = 'gemini-flash-latest';
+const OPENAI_KEY = process.env.OPENAI_API_KEY;
+const GROQ_KEY = process.env.GROQ_API_KEY;
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
+const FALLBACK_MODEL = 'gemini-flash-latest';
+const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
+const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -57,6 +61,56 @@ async function callGemini(model, { prompt, fileUri, fileUris }) {
   return { response, status: response.status };
 }
 
+async function callOpenAI({ prompt, model = OPENAI_MODEL, maxTokens = 2000 }) {
+  if (!OPENAI_KEY) {
+    throw new Error('Server config error: OpenAI API key missing');
+  }
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${OPENAI_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: 'You are Antigravity, an elite consultant astrologer.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.85,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  return { response, status: response.status };
+}
+
+async function callGroq({ prompt, model = GROQ_MODEL, maxTokens = 2000 }) {
+  if (!GROQ_KEY) {
+    throw new Error('Server config error: Groq API key missing');
+  }
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${GROQ_KEY}`,
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: 'system', content: 'You are Antigravity, an elite consultant astrologer.' },
+        { role: 'user', content: prompt },
+      ],
+      temperature: 0.85,
+      max_tokens: maxTokens,
+    }),
+  });
+
+  return { response, status: response.status };
+}
+
 export default async function handler(req, res) {
   // Handle preflight CORS
   if (req.method === 'OPTIONS') {
@@ -97,12 +151,49 @@ export default async function handler(req, res) {
   }
 
   // ── Payload ─────────────────────────────────────────────────────────────────
-  const { prompt, fileUri, fileUris } = req.body;
+  const {
+    prompt,
+    fileUri,
+    fileUris,
+    provider = 'google',
+    model,
+    maxTokens,
+  } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
-  if (!GEMINI_KEY) return res.status(500).json({ error: 'Server config error: API key missing' });
 
   // ── Proxy to Gemini ─────────────────────────────────────────────────────────
   try {
+    if (provider === 'openai') {
+      const { response, status } = await callOpenAI({ prompt, model, maxTokens });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(status).json({ error: err?.error?.message || `OpenAI error ${status}` });
+      }
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) return res.status(502).json({ error: 'OpenAI returned an empty response' });
+      return res.status(200).json({ text: text.trim(), provider: 'openai' });
+    }
+
+    if (provider === 'groq') {
+      const { response, status } = await callGroq({ prompt, model, maxTokens });
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        return res.status(status).json({ error: err?.error?.message || `Groq error ${status}` });
+      }
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content;
+      if (!text) return res.status(502).json({ error: 'Groq returned an empty response' });
+      return res.status(200).json({ text: text.trim(), provider: 'groq' });
+    }
+
+    if (provider !== 'google') {
+      return res.status(400).json({ error: `Unsupported provider: ${provider}` });
+    }
+
+    if (!GEMINI_KEY) return res.status(500).json({ error: 'Server config error: Gemini API key missing' });
     let { response, status } = await callGemini(PRIMARY_MODEL, { prompt, fileUri, fileUris });
 
     // Automatic fallback if primary model not available
