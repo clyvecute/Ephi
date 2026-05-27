@@ -2,6 +2,9 @@
 // Vercel Serverless Function — Secure Gemini API Proxy
 // The Gemini API key is stored as a Vercel Environment Variable (never exposed to client)
 
+import dotenv from 'dotenv';
+dotenv.config();
+
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const GROQ_KEY = process.env.GROQ_API_KEY;
