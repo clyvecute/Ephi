@@ -1121,7 +1121,7 @@ a, button, [role="button"], input[type="submit"], .btn, .tab-btn, .nav-link, .na
   border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1rem;
-  color: #fff;
+  color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 0.95rem;
   resize: vertical;

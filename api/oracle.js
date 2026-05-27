@@ -5,8 +5,8 @@
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 const OPENAI_KEY = process.env.OPENAI_API_KEY;
 const GROQ_KEY = process.env.GROQ_API_KEY;
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
-const FALLBACK_MODEL = 'gemini-flash-latest';
+const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const FALLBACK_MODEL = 'gemini-1.5-flash';
 const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
 const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
