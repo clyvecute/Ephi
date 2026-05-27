@@ -29,3 +29,9 @@ Thumbs.db
 npm-debug.log*
 
 .vercel
+
+# Test / scratch scripts (may contain local secrets)
+test-*.js
+scratch-*.js
+upload-*.js
+extract.cjs

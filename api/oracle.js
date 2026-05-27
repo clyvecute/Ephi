@@ -1,47 +1,28 @@
 // api/oracle.js
 // Vercel Serverless Function — Secure Gemini API Proxy
-// The Gemini API key is stored as a Vercel Environment Variable (never exposed to client)
+// GEMINI_API_KEY is read per-request (not at module load) to ensure
+// Vercel env vars are always available even after cold starts.
 
-import dotenv from 'dotenv';
-dotenv.config();
-
-const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const OPENAI_KEY = process.env.OPENAI_API_KEY;
-const GROQ_KEY = process.env.GROQ_API_KEY;
-const PRIMARY_MODEL = process.env.GEMINI_MODEL || 'gemini-2.0-flash';
+const PRIMARY_MODEL = 'gemini-2.0-flash';
 const FALLBACK_MODEL = 'gemini-1.5-flash';
-const OPENAI_MODEL = process.env.OPENAI_MODEL || 'gpt-4o-mini';
-const GROQ_MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile';
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS, GET',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Content-Type': 'application/json',
 };
 
-async function callGemini(model, { prompt, fileUri, fileUris }) {
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_KEY}`;
+async function callGemini(model, apiKey, { prompt, fileUri, fileUris }) {
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
   const parts = [{ text: prompt }];
-  
+
   if (fileUris && Array.isArray(fileUris)) {
     for (const uri of fileUris) {
-      if (uri) {
-        parts.push({
-          fileData: {
-            fileUri: uri,
-            mimeType: uri.endsWith('.pdf') ? 'application/pdf' : 'text/plain',
-          },
-        });
-      }
+      if (uri) parts.push({ fileData: { fileUri: uri, mimeType: uri.endsWith('.pdf') ? 'application/pdf' : 'text/plain' } });
     }
   } else if (fileUri) {
-    parts.push({
-      fileData: {
-        fileUri,
-        mimeType: fileUri.endsWith('.pdf') ? 'application/pdf' : 'text/plain',
-      },
-    });
+    parts.push({ fileData: { fileUri, mimeType: fileUri.endsWith('.pdf') ? 'application/pdf' : 'text/plain' } });
   }
 
   const body = {
@@ -64,155 +45,78 @@ async function callGemini(model, { prompt, fileUri, fileUris }) {
   return { response, status: response.status };
 }
 
-async function callOpenAI({ prompt, model = OPENAI_MODEL, maxTokens = 2000 }) {
-  if (!OPENAI_KEY) {
-    throw new Error('Server config error: OpenAI API key missing');
-  }
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${OPENAI_KEY}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: 'You are Antigravity, an elite consultant astrologer.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.85,
-      max_tokens: maxTokens,
-    }),
-  });
-
-  return { response, status: response.status };
-}
-
-async function callGroq({ prompt, model = GROQ_MODEL, maxTokens = 2000 }) {
-  if (!GROQ_KEY) {
-    throw new Error('Server config error: Groq API key missing');
-  }
-
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${GROQ_KEY}`,
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: 'You are Antigravity, an elite consultant astrologer.' },
-        { role: 'user', content: prompt },
-      ],
-      temperature: 0.85,
-      max_tokens: maxTokens,
-    }),
-  });
-
-  return { response, status: response.status };
-}
-
 export default async function handler(req, res) {
-  // Handle preflight CORS
-  if (req.method === 'OPTIONS') {
-    Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
-    return res.status(200).end();
-  }
-
+  // ── CORS preflight ───────────────────────────────────────────────────────────
   Object.entries(CORS_HEADERS).forEach(([k, v]) => res.setHeader(k, v));
+  if (req.method === 'OPTIONS') return res.status(200).end();
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  // ── Health / diagnostic check ────────────────────────────────────────────────
+  // GET /api/oracle returns env var presence without exposing the value
+  if (req.method === 'GET') {
+    const key = process.env.GEMINI_API_KEY;
+    return res.status(200).json({
+      status: 'ok',
+      gemini_key_set: Boolean(key),
+      gemini_key_length: key ? key.length : 0,
+      gemini_key_prefix: key ? key.slice(0, 8) + '...' : 'NOT SET',
+      model: PRIMARY_MODEL,
+      node_env: process.env.NODE_ENV,
+    });
   }
 
-  // ── Authentication ──────────────────────────────────────────────────────────
-  // Verify Firebase ID token so only logged-in Ephi users can call the Oracle
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
+
+  // ── Read key per-request (not at module load) ────────────────────────────────
+  const GEMINI_KEY = process.env.GEMINI_API_KEY;
+  if (!GEMINI_KEY) {
+    console.error('[oracle] GEMINI_API_KEY is not set in environment');
+    return res.status(500).json({
+      error: 'Server config error: GEMINI_API_KEY environment variable is not set.',
+      hint: 'Add GEMINI_API_KEY (no VITE_ prefix) in Vercel → Settings → Environment Variables, then redeploy.',
+    });
+  }
+
+  // ── Authentication ───────────────────────────────────────────────────────────
   const authHeader = req.headers.authorization || '';
   if (!authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: 'Unauthorized: missing token' });
+    return res.status(401).json({ error: 'Unauthorized: missing Bearer token' });
   }
-  if (authHeader.startsWith('Bearer ')) {
+  try {
     const idToken = authHeader.split('Bearer ')[1];
-    try {
-      // Lightweight JWT decode — we verify issuer + expiry without the Admin SDK
-      // (No Firebase Admin SDK required → keeps the function dependency-free)
-      const [, payloadB64] = idToken.split('.');
-      const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf8'));
-      const now = Math.floor(Date.now() / 1000);
-      if (!payload.sub || payload.exp < now) {
-        return res.status(401).json({ error: 'Unauthorized: token expired' });
-      }
-      // iss check: must be a Firebase token for your project
-      if (!payload.iss?.includes('securetoken.google.com')) {
-        return res.status(401).json({ error: 'Unauthorized: invalid token issuer' });
-      }
-    } catch {
-      return res.status(401).json({ error: 'Unauthorized: malformed token' });
-    }
+    const [, payloadB64] = idToken.split('.');
+    const payload = JSON.parse(Buffer.from(payloadB64, 'base64').toString('utf8'));
+    const now = Math.floor(Date.now() / 1000);
+    if (!payload.sub || payload.exp < now) return res.status(401).json({ error: 'Unauthorized: token expired' });
+    if (!payload.iss?.includes('securetoken.google.com')) return res.status(401).json({ error: 'Unauthorized: invalid token issuer' });
+  } catch {
+    return res.status(401).json({ error: 'Unauthorized: malformed token' });
   }
 
-  // ── Payload ─────────────────────────────────────────────────────────────────
-  const {
-    prompt,
-    fileUri,
-    fileUris,
-    provider = 'google',
-    model,
-    maxTokens,
-  } = req.body;
+  // ── Payload ──────────────────────────────────────────────────────────────────
+  const { prompt, fileUri, fileUris } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Missing prompt' });
 
-  // ── Proxy to Gemini ─────────────────────────────────────────────────────────
+  const MAX_PROMPT_CHARS = 32000;
+  if (prompt.length > MAX_PROMPT_CHARS) return res.status(400).json({ error: 'Prompt too large' });
+
+  // ── Proxy to Gemini ──────────────────────────────────────────────────────────
   try {
-    if (provider === 'openai') {
-      const { response, status } = await callOpenAI({ prompt, model, maxTokens });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        return res.status(status).json({ error: err?.error?.message || `OpenAI error ${status}` });
-      }
+    let { response, status } = await callGemini(PRIMARY_MODEL, GEMINI_KEY, { prompt, fileUri, fileUris });
 
-      const data = await response.json();
-      const text = data?.choices?.[0]?.message?.content;
-      if (!text) return res.status(502).json({ error: 'OpenAI returned an empty response' });
-      return res.status(200).json({ text: text.trim(), provider: 'openai' });
-    }
-
-    if (provider === 'groq') {
-      const { response, status } = await callGroq({ prompt, model, maxTokens });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        return res.status(status).json({ error: err?.error?.message || `Groq error ${status}` });
-      }
-
-      const data = await response.json();
-      const text = data?.choices?.[0]?.message?.content;
-      if (!text) return res.status(502).json({ error: 'Groq returned an empty response' });
-      return res.status(200).json({ text: text.trim(), provider: 'groq' });
-    }
-
-    if (provider !== 'google') {
-      return res.status(400).json({ error: `Unsupported provider: ${provider}` });
-    }
-
-    if (!GEMINI_KEY) return res.status(500).json({ error: 'Server config error: Gemini API key missing' });
-    let { response, status } = await callGemini(PRIMARY_MODEL, { prompt, fileUri, fileUris });
-
-    // Automatic fallback if primary model not available
-    if (status === 404) {
-      ({ response, status } = await callGemini(FALLBACK_MODEL, { prompt, fileUri, fileUris }));
+    if (status === 404 || status === 400) {
+      ({ response, status } = await callGemini(FALLBACK_MODEL, GEMINI_KEY, { prompt, fileUri, fileUris }));
     }
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
+      console.error('[oracle] Gemini error:', status, err);
       return res.status(status).json({ error: err?.error?.message || `Gemini error ${status}` });
     }
 
     const data = await response.json();
     return res.status(200).json(data);
   } catch (err) {
-    console.error('Proxy error:', err);
+    console.error('[oracle] Proxy error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
