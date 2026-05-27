@@ -12,6 +12,8 @@ import { getActiveAspects } from '../lib/aspects.js';
 import { calculateProfections } from '../lib/hellenistic.js';
 import { PlanetIcon, ZodiacIcon, UiIcon } from '../components/EphiIcons.jsx';
 import HouseTransits from '../components/HouseTransits.jsx';
+import EphiTimePicker from '../components/EphiTimePicker.jsx';
+import ChartProfilePicker from '../components/ChartProfilePicker.jsx';
 
 import EphiMarkdown from '../components/EphiMarkdown.jsx';
 import { useToast } from '../components/Toast';
@@ -24,6 +26,23 @@ const TABS = [
   { id: 'transits', label: 'My Transits' },
   { id: 'natal',    label: 'Natal Chart' },
 ];
+
+function scrubToParts(iso) {
+  const d = iso ? new Date(iso) : new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  return {
+    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
+    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+  };
+}
+
+function partsToIso(dateStr, timeStr) {
+  if (!dateStr) return null;
+  const [h, m] = (timeStr || '12:00').split(':').map(Number);
+  const local = new Date(dateStr);
+  local.setHours(h, m, 0, 0);
+  return local.toISOString();
+}
 
 const HOUSE_MEANINGS = {
   1: 'Self, Appearance, Vitality',
@@ -107,6 +126,7 @@ export default function Dashboard() {
     if (params.get('tab')) setTab(params.get('tab'));
   }, [location.search]);
   const [isEditing, setIsEditing] = useState(false);
+  const [isAddingNew, setIsAddingNew] = useState(false);
   const { natalChart, saveChart, clearChart, loading: natalLoading, error: natalError } = useNatal();
   const [scrubDate, setScrubDate] = useState(null); // null = Live
   const { transitPositions, skyAspects, transitToNatal, lastUpdated, refresh, error: transitError } = useTransits(natalChart, 60_000, scrubDate);
@@ -192,6 +212,7 @@ export default function Dashboard() {
   const handleSaveNatal = async (data) => {
     await saveChart(data);
     setIsEditing(false);
+    setIsAddingNew(false);
   };
 
   return (
@@ -202,6 +223,16 @@ export default function Dashboard() {
       </div>
 
       <AdSlot type="banner" slotId="dashboard-top" />
+
+      {natalChart && (
+        <ChartProfilePicker
+          onNewProfile={() => {
+            setTab('natal');
+            setIsAddingNew(true);
+            setIsEditing(true);
+          }}
+        />
+      )}
 
       {/* Tab bar */}
       <nav className="tab-bar" role="tablist" onKeyDown={handleTabKeyDown}>
@@ -241,8 +272,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* ── Transit Time Picker ────────────────────────────────────── */}
-      <div className="card" style={{
+      {/* ── Transit Time Picker (live sky + personal transits only) ── */}
+      {(tab === 'sky' || tab === 'transits') && <div className="card" style={{
         margin: '1rem 0 2rem',
         padding: '1rem 1.5rem',
         borderLeft: scrubDate ? '3px solid var(--accent)' : '1px solid var(--border)',
@@ -253,29 +284,37 @@ export default function Dashboard() {
             View Transit For
           </span>
 
-          {/* datetime-local covers both date and time in one native input */}
-          <input
-            type="datetime-local"
-            value={scrubDate
-              ? new Date(new Date(scrubDate).getTime() - new Date(scrubDate).getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-              : ''}
-            onChange={(e) => {
-              if (e.target.value) setScrubDate(new Date(e.target.value).toISOString());
-            }}
-            style={{
-              flex: 1,
-              minWidth: '200px',
-              background: 'var(--bg-deep)',
-              border: '1px solid var(--border)',
-              borderRadius: '8px',
-              padding: '8px 12px',
-              color: 'var(--text-primary)',
-              fontFamily: 'var(--font-sans)',
-              fontSize: '0.85rem',
-              outline: 'none',
-              colorScheme: 'dark'
-            }}
-          />
+          {(() => {
+            const parts = scrubToParts(scrubDate);
+            return (
+              <div style={{ display: 'flex', flex: 1, minWidth: '240px', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  type="date"
+                  value={parts.date}
+                  onChange={(e) => setScrubDate(partsToIso(e.target.value, parts.time))}
+                  style={{
+                    flex: '1 1 140px',
+                    background: 'var(--bg-deep)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '8px',
+                    padding: '8px 12px',
+                    color: 'var(--text-primary)',
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '0.85rem',
+                    colorScheme: 'dark',
+                  }}
+                />
+                <span className="ephi-time-sep" aria-hidden="true">at</span>
+                <div style={{ flex: '1 1 120px', minWidth: '110px' }}>
+                  <EphiTimePicker
+                    value={parts.time}
+                    onChange={(t) => setScrubDate(partsToIso(parts.date, t))}
+                    placeholder="Select time"
+                  />
+                </div>
+              </div>
+            );
+          })()}
 
           {/* Quick-jump buttons */}
           <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
@@ -307,7 +346,7 @@ export default function Dashboard() {
             Snapshot: {new Date(scrubDate).toLocaleString(undefined, { dateStyle: 'full', timeStyle: 'short' })}
           </div>
         )}
-      </div>
+      </div>}
 
       {/* ── Tab: Live Sky ─────────────────────────────────────────── */}
       {tab === 'sky' && (
@@ -376,10 +415,6 @@ export default function Dashboard() {
                   <strong>Your Personal Transits.</strong> The inner wheel is your birth chart; the outer wheel is the sky today. The list below interprets how these movements are activating your unique potential.
                 </p>
                 <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                  <Link to="/transit-calendar" className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '8px 14px', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <UiIcon name="fourstar" size={13} />
-                    Transit Calendar
-                  </Link>
                   <Link to="/progressions" className="btn btn-ghost" style={{ fontSize: '0.78rem', padding: '8px 14px', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
                     <UiIcon name="sparkle" size={13} />
                     Secondary Progressions
@@ -446,12 +481,15 @@ export default function Dashboard() {
             </div>
           </div>
         ) : (
-          <NatalForm 
-            initialData={natalChart?.meta} 
-            onSave={handleSaveNatal} 
-            onCancel={natalChart ? () => setIsEditing(false) : undefined}
-            loading={natalLoading} 
-            error={natalError} 
+          <NatalForm
+            title={isAddingNew ? '✦ New chart profile' : 'Your Birth Chart'}
+            buttonText={isAddingNew ? 'Save new profile' : 'Generate Natal Chart'}
+            initialData={isAddingNew ? undefined : natalChart?.meta}
+            newProfile={isAddingNew}
+            onSave={handleSaveNatal}
+            onCancel={natalChart ? () => { setIsEditing(false); setIsAddingNew(false); } : undefined}
+            loading={natalLoading}
+            error={natalError}
           />
         )
       )}

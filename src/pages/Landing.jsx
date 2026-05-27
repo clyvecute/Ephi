@@ -249,7 +249,7 @@ export default function Landing() {
           </button>
         </div>
         <div className="sky-wheel-wrap">
-          <NatalWheel natal={DUMMY_SKY} size={500} />
+          <NatalWheel natal={DUMMY_SKY} size={500} allowDownload={false} />
         </div>
       </section>
 

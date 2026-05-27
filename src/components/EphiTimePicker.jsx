@@ -81,9 +81,14 @@ export default function EphiTimePicker({ value, onChange, placeholder = 'Select 
   }
 
   // Display
-  const displayValue = parsed
-    ? `${hour}:${String(minute).padStart(2, '0')} ${period}`
-    : '';
+  const displayValue = parsed ? (
+    <>
+      <span>{String(hour).padStart(2, '0')}</span>
+      <span className="ephi-time-colon">:</span>
+      <span>{String(minute).padStart(2, '0')}</span>
+      <span style={{ marginLeft: '0.35rem', fontSize: '0.82em', opacity: 0.85 }}>{period}</span>
+    </>
+  ) : null;
 
   return (
     <div ref={ref} style={{ position: 'relative', width: '100%' }}>
@@ -116,7 +121,7 @@ export default function EphiTimePicker({ value, onChange, placeholder = 'Select 
           boxShadow: open ? '0 0 0 3px rgba(201,160,220,0.12)' : 'none',
         }}
       >
-        <span>{displayValue || placeholder}</span>
+        <span className="ephi-time-display">{displayValue || placeholder}</span>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5, flexShrink: 0 }}>
           <circle cx="12" cy="12" r="10"/>
           <polyline points="12 6 12 12 16 14"/>

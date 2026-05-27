@@ -6,6 +6,7 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { geocodeCity } from '../lib/geocoding.js';
 import { UiIcon } from './EphiIcons.jsx';
+import EphiTimePicker from './EphiTimePicker.jsx';
 
 // ─── Timezone auto-detect from longitude ─────────────────────────────────────
 function guessTimezoneFromCoords(lat, lon) {
@@ -66,6 +67,8 @@ export default function NatalForm({
   error,
   title = 'Your Birth Chart',
   buttonText = 'Generate Natal Chart',
+  newProfile = false,
+  onNewProfileChange,
 }) {
   const [form, setForm] = useState({
     name:       initialData?.name      || '',
@@ -114,16 +117,19 @@ export default function NatalForm({
     };
   }, [initialData?.time]);
 
-  const [timeInput, setTimeInput] = useState(initialTimeObj.timeStr);
-  const [timePeriod, setTimePeriod] = useState(initialTimeObj.period);
+  const [timeInput, setTimeInput] = useState(() => {
+    const t = initialData?.time || '12:00';
+    const match = t.match(/^(\d{1,2}):(\d{2})/);
+    if (!match) return '12:00';
+    let h = parseInt(match[1], 10);
+    const m = match[2];
+    return `${String(h).padStart(2, '0')}:${m}`;
+  });
   const [timeUnknown, setTimeUnknown] = useState(false);
 
   const handleToggleTimeUnknown = (checked) => {
     setTimeUnknown(checked);
-    if (checked) {
-      setTimeInput('12:00');
-      setTimePeriod('PM');
-    }
+    if (checked) setTimeInput('12:00');
   };
 
   useEffect(() => {
@@ -133,22 +139,22 @@ export default function NatalForm({
     }
     const match = timeInput.match(/^(\d{1,2}):(\d{2})/);
     if (match) {
-      let h = parseInt(match[1], 10);
+      const h = parseInt(match[1], 10);
       const m = match[2];
-      if (timePeriod === 'PM' && h < 12) h += 12;
-      if (timePeriod === 'AM' && h === 12) h = 0;
-      setForm(f => ({ ...f, time: `${h.toString().padStart(2, '0')}:${m}`, precision: true }));
+      if (h >= 0 && h <= 23) {
+        setForm(f => ({ ...f, time: `${String(h).padStart(2, '0')}:${m}`, precision: true }));
+      }
     }
-  }, [timeInput, timePeriod, timeUnknown]);
+  }, [timeInput, timeUnknown]);
 
   const displayTimePreview = useMemo(() => {
     const match = timeInput.match(/^(\d{1,2}):(\d{2})/);
     if (!match) return '';
-    let h = parseInt(match[1], 10);
+    const h = parseInt(match[1], 10);
     const m = match[2];
-    if (h < 1 || h > 12 || parseInt(m, 10) >= 60) return '';
-    return `Will generate chart for: ${h.toString().padStart(2, '0')}:${m} ${timePeriod}`;
-  }, [timeInput, timePeriod]);
+    if (h < 0 || h > 23 || parseInt(m, 10) >= 60) return '';
+    return `Will generate chart for: ${String(h).padStart(2, '0')}:${m}`;
+  }, [timeInput]);
 
   function set(field, value) {
     setForm(f => ({ ...f, [field]: value }));
@@ -225,6 +231,7 @@ export default function NatalForm({
       gender:      form.gender,
       houseSystem: form.houseSystem,
       precision:   !timeUnknown,
+      newProfile:  newProfile || undefined,
     });
   }
 
@@ -284,58 +291,12 @@ export default function NatalForm({
                 Birth Time
                 <span style={{ marginLeft: '0.4rem', color: 'var(--text-muted)', fontStyle: 'italic', fontWeight: 400 }}>(use 12:00 if unknown)</span>
               </label>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                <input
-                  id="natal-time"
-                  type="text"
-                  className="form-input"
-                  placeholder="12:00"
+              <div style={{ opacity: timeUnknown ? 0.55 : 1, pointerEvents: timeUnknown ? 'none' : 'auto' }}>
+                <EphiTimePicker
                   value={timeInput}
-                  onChange={e => setTimeInput(e.target.value)}
-                  required
-                  disabled={timeUnknown}
-                  style={{ marginBottom: 0, flex: 1, minWidth: '70px', opacity: timeUnknown ? 0.6 : 1, cursor: timeUnknown ? 'not-allowed' : 'text' }}
+                  onChange={setTimeInput}
+                  placeholder="12:00"
                 />
-                <div style={{ display: 'flex', background: 'var(--bg-deep)', padding: '2px', borderRadius: '8px', border: '1px solid var(--border)', height: '40px', alignItems: 'center', opacity: timeUnknown ? 0.6 : 1 }}>
-                  <button
-                    type="button"
-                    onClick={() => setTimePeriod('AM')}
-                    disabled={timeUnknown}
-                    style={{
-                      padding: '0 0.65rem',
-                      height: '34px',
-                      borderRadius: '6px',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      border: 'none',
-                      cursor: timeUnknown ? 'not-allowed' : 'pointer',
-                      background: timePeriod === 'AM' ? 'var(--accent)' : 'transparent',
-                      color: timePeriod === 'AM' ? '#fff' : 'var(--text-secondary)',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    AM
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setTimePeriod('PM')}
-                    disabled={timeUnknown}
-                    style={{
-                      padding: '0 0.65rem',
-                      height: '34px',
-                      borderRadius: '6px',
-                      fontSize: '0.72rem',
-                      fontWeight: 700,
-                      border: 'none',
-                      cursor: timeUnknown ? 'not-allowed' : 'pointer',
-                      background: timePeriod === 'PM' ? 'var(--accent)' : 'transparent',
-                      color: timePeriod === 'PM' ? '#fff' : 'var(--text-secondary)',
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    PM
-                  </button>
-                </div>
               </div>
               <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <input

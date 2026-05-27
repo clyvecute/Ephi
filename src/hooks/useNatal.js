@@ -8,21 +8,38 @@ import { auth, db } from '../lib/firebase';
 import { doc, onSnapshot, setDoc, deleteDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { store } from '../lib/store';
+import {
+  getProfiles,
+  getActiveChart,
+  getActiveProfileId,
+  upsertActiveProfile,
+  addProfile,
+  deleteProfile,
+  setActiveProfile,
+  loadProfilesFromFirestore,
+} from '../lib/profiles.js';
 
 const STORAGE_KEY = 'astro_natal';
 
 export function useNatal() {
   const [natalChart, setNatalChart] = useState(null);
+  const [profiles, setProfiles] = useState([]);
+  const [activeProfileId, setActiveProfileId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const refreshProfiles = () => {
+    setProfiles(getProfiles());
+    setActiveProfileId(getActiveProfileId());
+    setNatalChart(getActiveChart());
+  };
 
   // Load from store on mount
   useEffect(() => {
     try {
-      const chart = store.getJSON(STORAGE_KEY);
+      refreshProfiles();
+      const chart = getActiveChart() || store.getJSON(STORAGE_KEY);
       if (chart) {
-        // Sanity check: ensure the chart isn't corrupted with NaNs
-        // Check for both legacy and new structure (positions.Sun vs positions.sun)
         const hasSun = chart?.positions?.Sun || chart?.positions?.sun;
         if (hasSun != null) {
           setNatalChart(chart);
@@ -33,24 +50,40 @@ export function useNatal() {
     } catch {
       store.remove(STORAGE_KEY);
     }
+    const onStorage = () => refreshProfiles();
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   }, []);
 
   // Sync with Firestore if logged in
   useEffect(() => {
-    let unsubscribe = () => {};
+    let unsubNatal = () => {};
+    let unsubProfiles = () => {};
     const unregisterAuth = onAuthStateChanged(auth, async (user) => {
+      unsubNatal();
+      unsubProfiles();
       if (user) {
         try {
           await user.getIdToken(true);
-          const ref = doc(db, 'users', user.uid, 'data', 'natal');
-          unsubscribe = onSnapshot(ref, (snap) => {
+          const profilesRef = doc(db, 'users', user.uid, 'data', 'natal_profiles');
+          const natalRef = doc(db, 'users', user.uid, 'data', 'natal');
+
+          unsubProfiles = onSnapshot(profilesRef, (snap) => {
+            if (snap.exists()) {
+              loadProfilesFromFirestore(snap.data());
+              refreshProfiles();
+            }
+          }, () => {});
+
+          unsubNatal = onSnapshot(natalRef, (snap) => {
             if (snap.exists()) {
               const data = snap.data();
               const hasSun = data?.positions?.Sun || data?.positions?.sun;
-              // Only update if it's a valid chart (ignore soft-deletes)
               if (hasSun != null && !data._deleted) {
-                setNatalChart(data);
-                store.setJSON(STORAGE_KEY, data);
+                if (!getProfiles().length) {
+                  upsertActiveProfile(data, data.meta?.name);
+                }
+                refreshProfiles();
               }
             }
           }, (err) => {
@@ -61,14 +94,13 @@ export function useNatal() {
         } catch (e) {
           console.error('Auth sync error in useNatal:', e);
         }
-      } else {
-        unsubscribe();
       }
     });
 
     return () => {
       unregisterAuth();
-      unsubscribe();
+      unsubNatal();
+      unsubProfiles();
     };
   }, []);
 
@@ -82,15 +114,14 @@ export function useNatal() {
         houseSystem: birthData.houseSystem || 'P',
       });
       
-      // Save local first for instant UX
-      store.setJSON(STORAGE_KEY, chart);
-      setNatalChart(chart);
-
-      // Sync to cloud if authenticated
-      if (auth.currentUser) {
-        const ref = doc(db, 'users', auth.currentUser.uid, 'data', 'natal');
-        await setDoc(ref, chart);
+      const label = birthData.name?.trim() || chart.meta?.name;
+      if (birthData.newProfile) {
+        addProfile(chart, label);
+      } else {
+        upsertActiveProfile(chart, label);
       }
+      refreshProfiles();
+      setNatalChart(chart);
       
       return chart;
     } catch (e) {
@@ -102,8 +133,13 @@ export function useNatal() {
   }
 
   async function clearChart() {
-    store.remove(STORAGE_KEY);
-    setNatalChart(null);
+    const id = getActiveProfileId();
+    if (id) deleteProfile(id);
+    else {
+      store.remove(STORAGE_KEY);
+      setNatalChart(null);
+    }
+    refreshProfiles();
     if (auth.currentUser) {
       const ref = doc(db, 'users', auth.currentUser.uid, 'data', 'natal');
       try {
@@ -114,5 +150,14 @@ export function useNatal() {
     }
   }
 
-  return { natalChart, saveChart, clearChart, loading, error };
+  return {
+    natalChart,
+    profiles,
+    activeProfileId,
+    setActiveProfile: (id) => { setActiveProfile(id); refreshProfiles(); },
+    saveChart,
+    clearChart,
+    loading,
+    error,
+  };
 }

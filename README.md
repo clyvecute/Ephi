@@ -80,19 +80,30 @@ in Firebase Console → Firestore → `users/{uid}` → increment the number.
 
 ---
 
-#### 5. BaZi Accurate Engine (`src/lib/bazi_accurate.js`)
-Solar-term based Four Pillars calculation. Fixes the month pillar inaccuracy
-of the original `bazi.js` which used the Gregorian calendar month.
+#### 5. BaZi Accurate Engine (`src/lib/bazi.js`)
+Solar-term Four Pillars — merged into `bazi.js` (async, SWE-backed). `BaziPage` uses `birthDataToDate()` + longitude + UTC offset from the active natal profile.
 
 **Key fixes:**
-- Month Pillar uses Sun's tropical longitude (15° steps = 24 solar terms) — not calendar month
-- Luck Pillar start age calculated from days to nearest solar term ÷ 3
-- Hour Pillar uses Local Mean Solar Time (longitude-corrected) — not raw local time
-- Sanity check on every init: verifies `swe_julday(2000,1,1,12) ≈ 2451545`
+- Month Pillar uses Sun's tropical longitude (24 solar terms) — not calendar month
+- Luck Pillar start age from actual solar-term distance (÷ 3)
+- Hour Pillar uses True Local Solar Time (longitude + equation of time)
+- Day boundary at 23:00 TLST (子時)
 
-**Affected users:** Anyone born within ~3 days of Feb 4, Mar 6, Apr 5, May 6,
-Jun 6, Jul 7, Aug 8, Sep 8, Oct 8, Nov 7, Dec 7, Jan 6 — their month pillar
-and luck pillar timing may have been wrong in the old engine.
+---
+
+#### 6. Multi-Chart Profiles (one account)
+Save multiple natal charts (family, clients, alt births) and switch the **active** profile.
+
+- `src/lib/profiles.js` — `astro_natal_profiles`, Firestore `users/{uid}/data/natal_profiles`
+- `ChartProfilePicker` on Dashboard + Synastry
+- **Tools Archive** shows the active chart summary; specialist tools use `loadNatalChart()` → active profile
+
+---
+
+#### 7. RAG vs Gemini (Grimoire)
+- Bind **tool keys** (`natal`, `transit`, `horary`, `synastry`, `vedic`, `global`) to Gemini **File API URIs**
+- Local PDF pick → `pending_upload` only; paste URI after upload to Google
+- `oracle.js` → `checkAndDeductCredit()` before every AI call
 
 ---
 
@@ -191,8 +202,9 @@ users/{uid}/
     puristMode: boolean
   }
   
-users/{uid}/data/library    ← saved library config
-users/{uid}/data/natal      ← natal chart (cloud backup)
+users/{uid}/data/library         ← RAG bindings per tool
+users/{uid}/data/natal           ← active natal chart (cloud backup)
+users/{uid}/data/natal_profiles  ← all chart profiles + activeId
 
 feedback/{docId}/           ← user feedback (admin-only read)
 analytics/{docId}/          ← page view events (admin-only read)
@@ -224,6 +236,7 @@ VITE_FREE_DAILY_CREDITS=3
 VITE_FREE_TRIAL_READS=3
 
 # Payments (anonymous)
+VITE_PAYPAL_URL=https://paypal.me/jellyephi
 VITE_KOFI_URL=https://ko-fi.com/cheshire_catt
 VITE_WALLET_USDT_TRC20=TS4aYAGCjXwNYrqQaZjrWz8ue5AviHfzCF
 VITE_WALLET_ETH=0xa33bB114FbAa5071a6d3E30740ca2e072ccd6B63
@@ -236,8 +249,10 @@ VITE_WALLET_BTC=bc1qr0m76v8t7t5gdq232883exqlz8rc6gf0nmcvf2
 
 | Item | Status | Notes |
 |------|--------|-------|
-| BaZi accurate engine | Built, not yet wired to BaziPage | Requires async refactor of BaziPage |
-| Jyotish Prashna (Horary) | Planned | Architecture documented in `ACCURACY_AND_DEPTH.md` |
+| BaZi accurate engine | ✦ Done | `bazi.js` + async `BaziPage` |
+| Multi-profile rename/export | Partial | Add/edit labels, JSON export per profile |
+| Gemini PDF upload from browser | Planned | `uploadToGemini` Cloud Function; until then paste File URI |
+| Jyotish Prashna (Horary) | ✦ Done | Western + Prashna modes with Oracle synthesis |
 | Muhurta (Jyotish Electional) | Planned | Panchanga scoring designed |
 | Automated payment webhook | Planned | Ko-fi → Firebase Function → `addCredits()` |
 | Composite chart | Planned | Midpoint formula ready |

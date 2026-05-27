@@ -5,6 +5,10 @@
 
 import { getPlanetPositions } from './ephemeris.js';
 
+function lonOf(position) {
+  return typeof position === 'number' ? position : position?.longitude;
+}
+
 function angularDiff(a, b) {
   let diff = a - b;
   while (diff < -180) diff += 360;
@@ -12,15 +16,15 @@ function angularDiff(a, b) {
   return diff;
 }
 
-export function findSolarReturn(natalSunLon, year, lat = 0, lng = 0, sidereal = false) {
+export async function findSolarReturn(natalSunLon, year, lat = 0, lng = 0, sidereal = false) {
   let t1 = new Date(Date.UTC(year, 0, 1)).getTime();
   let t2 = t1 + 10 * 24 * 60 * 60 * 1000; // 10 days
   const endTime = new Date(Date.UTC(year, 11, 31)).getTime();
   
   let found = false;
   while (t2 <= endTime + 10 * 24 * 60 * 60 * 1000) {
-    const lon1 = getPlanetPositions(new Date(t1), null, { sidereal }).sun;
-    const lon2 = getPlanetPositions(new Date(t2), null, { sidereal }).sun;
+    const lon1 = lonOf((await getPlanetPositions(new Date(t1), null, { sidereal })).sun);
+    const lon2 = lonOf((await getPlanetPositions(new Date(t2), null, { sidereal })).sun);
     
     const diff1 = angularDiff(lon1, natalSunLon);
     const diff2 = angularDiff(lon2, natalSunLon);
@@ -47,12 +51,12 @@ export function findSolarReturn(natalSunLon, year, lat = 0, lng = 0, sidereal = 
   
   for (let i = 0; i < 30; i++) {
     mid = (low + high) / 2;
-    const midLon = getPlanetPositions(new Date(mid), null, { sidereal }).sun;
+    const midLon = lonOf((await getPlanetPositions(new Date(mid), null, { sidereal })).sun);
     const midDiff = angularDiff(midLon, natalSunLon);
     
     if (Math.abs(midDiff) < 0.0001) break;
     
-    const lowLon = getPlanetPositions(new Date(low), null, { sidereal }).sun;
+    const lowLon = lonOf((await getPlanetPositions(new Date(low), null, { sidereal })).sun);
     const lowDiff = angularDiff(lowLon, natalSunLon);
     
     if (lowDiff * midDiff < 0) {
@@ -63,7 +67,7 @@ export function findSolarReturn(natalSunLon, year, lat = 0, lng = 0, sidereal = 
   }
 
   const exactDate = new Date(mid);
-  const planets = getPlanetPositions(exactDate, null, { sidereal, lat, lon: lng });
+  const planets = await getPlanetPositions(exactDate, null, { sidereal, lat, lon: lng });
   
   return {
     date: exactDate.toISOString(),
@@ -73,15 +77,15 @@ export function findSolarReturn(natalSunLon, year, lat = 0, lng = 0, sidereal = 
   };
 }
 
-export function findLunarReturn(natalMoonLon, fromDate = new Date(), sidereal = false) {
+export async function findLunarReturn(natalMoonLon, fromDate = new Date(), sidereal = false) {
   let t1 = new Date(fromDate).getTime();
   let t2 = t1 + 3 * 24 * 60 * 60 * 1000; // 3 days
   const endTime = t1 + 32 * 24 * 60 * 60 * 1000;
   
   let found = false;
   while (t2 <= endTime) {
-    const lon1 = getPlanetPositions(new Date(t1), null, { sidereal }).moon;
-    const lon2 = getPlanetPositions(new Date(t2), null, { sidereal }).moon;
+    const lon1 = lonOf((await getPlanetPositions(new Date(t1), null, { sidereal })).moon);
+    const lon2 = lonOf((await getPlanetPositions(new Date(t2), null, { sidereal })).moon);
     
     const diff1 = angularDiff(lon1, natalMoonLon);
     const diff2 = angularDiff(lon2, natalMoonLon);
@@ -106,12 +110,12 @@ export function findLunarReturn(natalMoonLon, fromDate = new Date(), sidereal = 
   
   for (let i = 0; i < 30; i++) {
     mid = (low + high) / 2;
-    const midLon = getPlanetPositions(new Date(mid), null, { sidereal }).moon;
+    const midLon = lonOf((await getPlanetPositions(new Date(mid), null, { sidereal })).moon);
     const midDiff = angularDiff(midLon, natalMoonLon);
     
     if (Math.abs(midDiff) < 0.0001) break;
     
-    const lowLon = getPlanetPositions(new Date(low), null, { sidereal }).moon;
+    const lowLon = lonOf((await getPlanetPositions(new Date(low), null, { sidereal })).moon);
     const lowDiff = angularDiff(lowLon, natalMoonLon);
     
     if (lowDiff * midDiff < 0) {
@@ -122,7 +126,7 @@ export function findLunarReturn(natalMoonLon, fromDate = new Date(), sidereal = 
   }
 
   const exactDate = new Date(mid);
-  const planets = getPlanetPositions(exactDate, null, { sidereal });
+  const planets = await getPlanetPositions(exactDate, null, { sidereal });
   
   return {
     date: exactDate.toISOString(),

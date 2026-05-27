@@ -5,6 +5,7 @@
  * Integrates gpt-4o-mini as a high-speed, extremely cost-effective
  * (practically free) model, with gpt-4o as a premium fallback.
  */
+import { getBookForTool } from '../library.js';
 import { 
   formatNatal, 
   formatPatterns, 
@@ -149,6 +150,11 @@ Write a comprehensive relationship reading for ${nameA} and ${nameB}. Use a warm
 5. **Advice for the Path Ahead** (3 clear bullet points): Practical, grounded steps they can take to strengthen their bond and navigate their unique tensions.
 
 Avoid clichés and generic horoscopes. The reading should feel bespoke, sophisticated, and life-affirming. Avoid calling them "the natives." Use "you" and "your".`;
+
+  const libraryBooks = getBookForTool('synastry');
+  if (libraryBooks.length > 0) {
+    prompt += `\n\nCRITICAL: Base your synastry analysis on the techniques in: ${libraryBooks.map(b => b.name).join(', ')}. (OpenAI route cannot attach Gemini PDFs; align interpretation with these named references.)`;
+  }
 
   const text = await callOpenAI(prompt, 1400, 'gpt-4o-mini');
 

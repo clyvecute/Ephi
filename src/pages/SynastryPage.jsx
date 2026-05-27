@@ -1,30 +1,24 @@
 import { useState, useEffect } from 'react';
-import { getPlanetPositions, getZodiacInfo } from '../lib/ephemeris';
 import {
   getSynastryAspects,
   scoreSynastry,
   getKeyConnections,
   groupAspectsByNature,
-  PLANET_META,
 } from '../lib/synastry.js';
 import { isOracleConfigured as isGeminiConfigured, generateSynastryReading } from '../lib/oracle';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
-import EphiDatePicker from '../components/EphiDatePicker.jsx';
-import EphiTimePicker from '../components/EphiTimePicker.jsx';
 import { generatePrecisionNatalChart } from '../lib/natal.js';
 import EphiMarkdown from '../components/EphiMarkdown';
 import NatalForm from '../components/NatalForm.jsx';
 import SynastryGrid from '../components/SynastryGrid.jsx';
 import { SynastryWheel } from '../components/AstroChartWheel.jsx';
+import { useNatal } from '../hooks/useNatal.js';
 
 import { store } from '../lib/store';
+import { getBookForTool } from '../lib/library.js';
+import ChartProfilePicker from '../components/ChartProfilePicker.jsx';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getNatalA() {
-  try { return store.getJSON('astro_natal'); }
-  catch { return null; }
-}
 
 function getPartners() {
   try { return store.getJSON('astro_partners', []); }
@@ -141,6 +135,7 @@ function KeyConnectionCard({ aspect }) {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function SynastryPage() {
+  const { natalChart, profiles, activeProfileId, setActiveProfile } = useNatal();
   const [natalA,        setNatalA]        = useState(null);
   const [natalB,        setNatalB]        = useState(null);
   const [nameA,         setNameA]         = useState('You');
@@ -162,12 +157,59 @@ export default function SynastryPage() {
   useEffect(() => {
     const settings = store.getJSON('ephi_settings') || {};
     setPuristMode(settings.puristMode || false);
-
-    const natal = getNatalA();
-    setNatalA(natal);
-    if (natal?.meta?.birthCity) setNameA('You');
     setPartners(getPartners());
   }, []);
+
+  useEffect(() => {
+    setNatalA(natalChart || null);
+    setNameA(natalChart?.meta?.name || 'You');
+  }, [natalChart]);
+
+  useEffect(() => {
+    if (!natalA || !natalB) {
+      if (!natalA) {
+        setStatus('idle');
+        setAspects([]);
+        setScore(null);
+        setKeyConns([]);
+        setGrouped(null);
+        setGeminiText('');
+      }
+      return;
+    }
+
+    const asp = getSynastryAspects(natalA, natalB);
+    const sc = scoreSynastry(asp);
+    setAspects(asp);
+    setScore(sc);
+    setKeyConns(getKeyConnections(asp, 5));
+    setGrouped(groupAspectsByNature(asp));
+    setStatus('done');
+    setGeminiText('');
+    setExpandedIdx(null);
+  }, [natalA, natalB]);
+
+  function selectProfileA(id) {
+    setActiveProfile(id);
+    const p = profiles.find(x => x.id === id);
+    if (p?.chart) {
+      setNatalA(p.chart);
+      setNameA(p.label || p.chart.meta?.name || 'You');
+    }
+  }
+
+  function loadProfileB(profile) {
+    if (!profile?.chart) return;
+    setNatalB(profile.chart);
+    setNameB(profile.label || profile.chart.meta?.name || 'Them');
+    const asp = getSynastryAspects(natalA, profile.chart);
+    const sc = scoreSynastry(asp);
+    setAspects(asp);
+    setScore(sc);
+    setKeyConns(getKeyConnections(asp, 5));
+    setGrouped(groupAspectsByNature(asp));
+    setStatus('done');
+  }
 
   async function handleSubmitB(form) {
     if (!form.date) { setErrorMsg('Birth date is required.'); return; }
@@ -278,13 +320,34 @@ export default function SynastryPage() {
         <p className="page-subtitle">Compare your natal chart with another person's to reveal the energetic dynamics of your relationship.</p>
       </div>
 
+      <ChartProfilePicker compact />
+
       <div className="reading-natal-summary ephi-card">
-        <span className="reading-natal-label">You</span>
+        <span className="reading-natal-label">Person A</span>
         <span className="reading-natal-value">
-          {natalA.meta?.date || natalA.meta?.birthDate}
+          {nameA} — {natalA.meta?.date || natalA.meta?.birthDate}
           {natalA.meta?.city || natalA.meta?.birthCity ? ` · ${natalA.meta?.city || natalA.meta?.birthCity}` : ''}
         </span>
       </div>
+
+      {profiles.length > 1 && status !== 'done' && (
+        <div className="card" style={{ padding: '1rem', marginBottom: '1rem' }}>
+          <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Switch Person A</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {profiles.map(p => (
+              <button
+                key={p.id}
+                type="button"
+                className={`btn ${activeProfileId === p.id ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ fontSize: '0.78rem' }}
+                onClick={() => selectProfileA(p.id)}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {status !== 'done' ? (
         <>
@@ -296,11 +359,18 @@ export default function SynastryPage() {
             error={errorMsg}
           />
 
-          {partners.length > 0 && (
+          {(partners.length > 0 || profiles.filter(p => p.id !== activeProfileId).length > 0) && (
             <div className="synastry-saved-wrap">
-              <div className="reading-past-label">Saved profiles</div>
+              <div className="reading-past-label">Person B — saved charts</div>
+              {profiles.filter(p => p.id !== activeProfileId).map(p => (
+                <button key={p.id} type="button" className="reading-past-item" onClick={() => loadProfileB(p)}>
+                  <span className="reading-past-focus">{p.label}</span>
+                  <span className="reading-past-time">{p.chart?.meta?.date}</span>
+                  <span className="reading-past-chevron">›</span>
+                </button>
+              ))}
               {partners.map((p, i) => (
-                <button key={i} className="reading-past-item" onClick={() => handleLoadPartner(p)}>
+                <button key={`partner-${i}`} type="button" className="reading-past-item" onClick={() => handleLoadPartner(p)}>
                   <span className="reading-past-focus">{p.name}</span>
                   <span className="reading-past-time">{p.date || p.birthDate}</span>
                   <span className="reading-past-chevron">›</span>
@@ -429,6 +499,15 @@ export default function SynastryPage() {
               <div className="reading-banner-wrap card" style={{ minHeight: 'auto', padding: '2rem' }}>
                 <p className="reading-banner-text">
                   Get a personalized reading for {nameA} & {nameB} based on their synastry aspects.
+                  {(() => {
+                    const books = getBookForTool('synastry').filter(b => b.uri && b.uri !== 'pending_upload');
+                    if (books.length === 0) return null;
+                    return (
+                      <span style={{ display: 'block', marginTop: '0.75rem', fontSize: '0.8rem', color: 'var(--accent)' }}>
+                        RAG active: {books.map(b => b.name).join(', ')} (bound under Synastry in Sys-Archive)
+                      </span>
+                    );
+                  })()}
                 </p>
                 <button className="btn btn-primary" onClick={handleGemini}>
                   <UiIcon name="sparkle" size={18} /> Generate Reading

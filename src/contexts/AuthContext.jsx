@@ -8,6 +8,7 @@ import {
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 import { store } from '../lib/store';
+import { grantDailyCreditsIfDue, ensureNewUserCredits } from '../lib/monetization.js';
 
 const AuthContext = createContext();
 
@@ -34,6 +35,7 @@ const CelestialSparkle = ({ size = 24, color = "var(--accent)" }) => (
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
+  const [credits, setCredits] = useState(0);
   const [loading, setLoading] = useState(true);
   const [authModal, setAuthModal] = useState({ isOpen: false, mode: 'login' });
 
@@ -57,7 +59,9 @@ export function AuthProvider({ children }) {
               email: result.user.email,
               displayName: result.user.displayName,
               createdAt: new Date().toISOString(),
-              settings: { persona: 'stoic', notifications: false }
+              credits: Number(import.meta.env.VITE_FREE_DAILY_CREDITS) || 3,
+              lastCreditGrant: new Date().toISOString(),
+              settings: { persona: 'stoic', notifications: false },
             });
           } catch (fsError) {
             console.error("Firestore setup error:", fsError);
@@ -114,15 +118,28 @@ export function AuthProvider({ children }) {
             }
           }));
 
-          // Pull Settings
           const userRef = doc(db, 'users', user.uid);
-          unsubs.push(onSnapshot(userRef, (snap) => {
-            if (snap.exists() && snap.data()?.settings?.persona) {
-              store.set('ephi_persona', snap.data().settings.persona);
+          unsubs.push(onSnapshot(userRef, async (snap) => {
+            if (!snap.exists()) return;
+            let data = snap.data();
+            if (data.settings?.persona) {
+              store.set('ephi_persona', data.settings.persona);
             }
+            try {
+              await ensureNewUserCredits(user.uid);
+              await grantDailyCreditsIfDue(user.uid, data);
+              const fresh = await getDoc(userRef);
+              if (fresh.exists()) data = fresh.data();
+            } catch (e) {
+              console.warn('Credit grant check:', e);
+            }
+            const balance = data.credits == null
+              ? (Number(import.meta.env.VITE_FREE_DAILY_CREDITS) || 3)
+              : data.credits;
+            setCredits(balance);
           }, (err) => {
             if (err.code !== 'permission-denied') {
-              console.error("Settings sync error:", err);
+              console.error('User sync error:', err);
             }
           }));
         } catch (e) {
@@ -130,6 +147,7 @@ export function AuthProvider({ children }) {
           setCurrentUser(user);
         }
       } else {
+        setCredits(0);
         unsubs.forEach(unsub => unsub());
         unsubs = [];
       }
@@ -143,10 +161,11 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const value = { 
-    currentUser, 
-    loginWithGoogle: openLoginModal, 
-    logout: openLogoutModal 
+  const value = {
+    currentUser,
+    credits,
+    loginWithGoogle: openLoginModal,
+    logout: openLogoutModal,
   };
 
   return (

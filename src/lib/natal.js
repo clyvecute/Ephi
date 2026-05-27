@@ -6,6 +6,7 @@
 
 import { getZodiacInfo } from './ephemeris.js';
 import { SIGNS } from './astronomy.js';
+import { getActiveChart } from './profiles.js';
 
 // ─── Storage key ──────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ export function saveNatalChart(chart) {
 
 export function loadNatalChart() {
   try {
-    return store.getJSON(STORAGE_KEY);
+    return getActiveChart() || store.getJSON(STORAGE_KEY);
   } catch (e) {
     console.error('Failed to load natal chart:', e);
     return null;

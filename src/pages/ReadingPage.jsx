@@ -5,7 +5,7 @@
 // calls Gemini Flash, and displays the synthesized reading.
 
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { generateReading, isOracleConfigured as isGeminiConfigured, FOCUS_AREAS } from '../lib/oracle';
 import {
   saveReading,
@@ -19,15 +19,11 @@ import EphiMarkdown from '../components/EphiMarkdown';
 import { NatalWheel as ChartWheel } from '../components/AstroChartWheel.jsx';
 import { generateAspectReading } from '../lib/oracle';
 import AdSlot from '../components/AdSlot.jsx';
+import { useToast } from '../components/Toast';
 import { store } from '../lib/store';
+import { useNatal } from '../hooks/useNatal.js';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function getNatalFromStorage() {
-  try {
-    return store.getJSON('astro_natal');
-  } catch { return null; }
-}
 
 function getAspectsFromStorage() {
   try {
@@ -238,9 +234,8 @@ function NoNatalBanner() {
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function ReadingPage() {
-  const navigate = useNavigate();
+  const { natalChart } = useNatal();
 
-  const [natal,       setNatal]       = useState(null);
   const [aspects,     setAspects]     = useState([]);
   const [focus,       setFocus]       = useState('general');
   const [mode,        setMode]        = useState('transit');
@@ -261,8 +256,6 @@ export default function ReadingPage() {
     setPuristMode(settings.puristMode || false);
 
     setConfigured(isGeminiConfigured());
-    const natalData = getNatalFromStorage();
-    setNatal(natalData);
 
     const aspectData = getAspectsFromStorage();
     if (aspectData?.aspects) {
@@ -276,27 +269,31 @@ export default function ReadingPage() {
     loadPast();
   }, []);
 
+  const natal = natalChart;
+
   // Fetch fresh aspects if not cached
   useEffect(() => {
-    if (!natal || aspects.length > 0) return;
-
-    function calcAspects() {
-      try {
-        const now = new Date();
-        const transitPositions = getPlanetPositions(now);
-        const natalPositions = natal.positions;
-        
-        const tn = getActiveAspects(transitPositions, natalPositions);
-        setAspects(tn || []);
-        
-        // Cache for this session
-        store.setJSON('astro_aspects', { aspects: tn, timestamp: now.toISOString() });
-      } catch (err) {
-        console.error('Failed to calculate aspects locally:', err);
-      }
+    if (!natal) {
+      setAspects([]);
+      return;
     }
 
-    calcAspects();
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const now = new Date();
+        const transitPositions = await getPlanetPositions(now);
+        const tn = getActiveAspects(transitPositions, natal.positions);
+        if (cancelled) return;
+        setAspects(tn || []);
+        store.setJSON('astro_aspects', { aspects: tn, timestamp: now.toISOString() });
+      } catch (err) {
+        console.error('Failed to calculate aspects:', err);
+      }
+    })();
+
+    return () => { cancelled = true; };
   }, [natal]);
 
   async function handleGenerate() {
@@ -424,130 +421,106 @@ export default function ReadingPage() {
   }
 
   // ── Idle / error — main UI ─────────────────────────────────────────────────
+  const ascLon = natal.ascendant?.longitude ?? natal.asc?.longitude ?? 0;
+  const sigTransitCount = aspects.filter(a => ['exact', 'strong'].includes(a.strength)).length;
+
   return (
-    <div className="page-wrap">
-      {/* Page header */}
-      <div className="page-header">
+    <div className="page-wrap reading-page">
+      <div className="page-header reading-page-header">
         <span className="page-label">The Oracle</span>
-        <h1 className="page-title">
-          <UiIcon name="sparkle" size={28} color="var(--accent)" style={{ marginRight: '12px' }} />
-          AI Reading
-        </h1>
+        <h1 className="page-title">AI Reading</h1>
         <p className="page-subtitle">
-          Gemini synthesizes your natal chart with today's live transits into a personalised reading.
+          Synthesize your natal chart{mode === 'transit' ? " with today's transits" : ''} into a focused essay. RAG references from Sys-Archive apply when bound.
         </p>
       </div>
 
       <AdSlot type="banner" slotId="reading-top" />
 
-      {/* Interactive Chart Wheel */}
-      <div className="chart-container" style={{ marginBottom: '3rem' }}>
-        <ChartWheel 
-          planets={natal?.positions || {}} 
-          ascendant={natal?.asc || 0}
-          size={Math.min(window.innerWidth - 40, 500)}
-          bgColor="var(--bg-card)"
-          strokeColor="var(--border)"
-          onPlanetClick={handlePlanetClick}
-          onAspectClick={handleAspectClick}
-        />
-        <p style={{ textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem' }}>
-          ✦ Click any planet for a specialized deep-dive reading.
-        </p>
-      </div>
-
-      {/* Natal summary */}
-      <div className="reading-natal-summary card" style={{ textAlign: 'center' }}>
-        <div className="reading-natal-label">Reading for</div>
-        <div className="reading-natal-value">
-          {natal.meta?.birthDate || 'your natal chart'}
-          {natal.meta?.birthCity ? ` · ${natal.meta.birthCity}` : ''}
-        </div>
-      </div>
-
-      {/* Active aspects count */}
-      {aspects.length > 0 && (
-        <div className="reading-aspects-summary">
-          <span className="reading-aspects-dot" />
-          <span className="reading-aspects-text">
-            {aspects.filter(a => ['exact','strong'].includes(a.strength)).length} significant transits active now
-          </span>
-        </div>
-      )}
-
-      {/* Reading Type selector */}
-      <div className="reading-section">
-        <div className="reading-section-title">Reading Type</div>
-        <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-card)', padding: '4px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-          <button 
-            className={`btn ${mode === 'transit' ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ flex: 1, padding: '0.75rem', borderRadius: '4px', fontSize: '0.9rem' }}
-            onClick={() => setMode('transit')}
-            disabled={status === 'loading'}
-          >
-            Transit Forecast
-          </button>
-          <button 
-            className={`btn ${mode === 'natal' ? 'btn-primary' : 'btn-ghost'}`}
-            style={{ flex: 1, padding: '0.75rem', borderRadius: '4px', fontSize: '0.9rem' }}
-            onClick={() => setMode('natal')}
-            disabled={status === 'loading'}
-          >
-            Natal Blueprint
-          </button>
-        </div>
-        <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.75rem', textAlign: 'center' }}>
-          {mode === 'transit' ? "Analyzes how today's active transits are triggering your chart." : 'A timeless deep dive into your fundamental soul architecture.'}
-        </p>
-      </div>
-
-      {/* Focus selector */}
-      <div className="reading-section">
-        <div className="reading-section-title">Choose your focus</div>
-        <FocusSelector
-          selected={focus}
-          onChange={setFocus}
-          disabled={status === 'loading'}
-        />
-      </div>
-
-      {/* Custom Inquiry Box */}
-      {focus === 'custom' && (
-        <div className="reading-section">
-          <div className="reading-section-title">Your Question</div>
-          <textarea
-            className="reading-inquiry-box"
-            placeholder="e.g. 'What does my chart say about my hidden talents?' or 'Will I move abroad this year?'"
-            value={userQuery}
-            onChange={(e) => setUserQuery(e.target.value)}
-            disabled={status === 'loading'}
-          />
-          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>
-            Be specific! Mention the life area or transition you're curious about.
+      <div className="reading-page-grid">
+        <aside className="reading-page-aside card">
+          <div className="reading-natal-label">Reading for</div>
+          <div className="reading-natal-value" style={{ marginBottom: '1rem' }}>
+            {natal.meta?.name || 'Your chart'}
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.35rem', fontWeight: 400 }}>
+              {natal.meta?.date}{natal.meta?.city ? ` · ${natal.meta.city}` : ''}
+            </div>
+          </div>
+          {sigTransitCount > 0 && mode === 'transit' && (
+            <div className="reading-aspects-summary" style={{ margin: 0 }}>
+              <span className="reading-aspects-dot" />
+              <span className="reading-aspects-text">{sigTransitCount} significant transits now</span>
+            </div>
+          )}
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '1rem', lineHeight: 1.5 }}>
+            Configure type and focus on the right, then generate. Deep-dive on a single planet is optional via the wheel below.
           </p>
-        </div>
-      )}
+        </aside>
 
-      {/* Error */}
-      {status === 'error' && (
-        <div className="reading-error-box">
-          <UiIcon name="warning" size={16} />
-          <span>{errorMsg}</span>
-        </div>
-      )}
+        <div className="reading-page-main">
+          <div className="reading-section card" style={{ padding: '1.25rem' }}>
+            <div className="reading-section-title">Reading type</div>
+            <div className="reading-mode-toggle">
+              <button type="button" className={`btn ${mode === 'transit' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setMode('transit')} disabled={status === 'loading'}>
+                Transit forecast
+              </button>
+              <button type="button" className={`btn ${mode === 'natal' ? 'btn-primary' : 'btn-ghost'}`} onClick={() => setMode('natal')} disabled={status === 'loading'}>
+                Natal blueprint
+              </button>
+            </div>
+            <p className="reading-section-hint">
+              {mode === 'transit' ? "How today's sky activates your chart." : 'Timeless soul architecture — no transits.'}
+            </p>
+          </div>
 
-      {/* Generate button */}
-      <div className="reading-generate-wrap">
-        <button className="btn btn-primary" onClick={handleGenerate} style={{ width: '100%', padding: '1rem' }}>
-          <UiIcon name="sparkle" size={18} />
-          Generate {FOCUS_AREAS.find(f => f.value === focus)?.label} Reading
-        </button>
-        <p className="reading-generate-note">
-          Uses ~1 of your 15 free Gemini requests per minute
-        </p>
+          <div className="reading-section card" style={{ padding: '1.25rem' }}>
+            <div className="reading-section-title">Focus</div>
+            <FocusSelector selected={focus} onChange={setFocus} disabled={status === 'loading'} />
+          </div>
+
+          {focus === 'custom' && (
+            <div className="reading-section card" style={{ padding: '1.25rem' }}>
+              <div className="reading-section-title">Your question</div>
+              <textarea
+                className="reading-inquiry-box"
+                placeholder="What are you asking the Oracle?"
+                value={userQuery}
+                onChange={(e) => setUserQuery(e.target.value)}
+                disabled={status === 'loading'}
+              />
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className="reading-error-box">
+              <UiIcon name="warning" size={16} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <div className="reading-generate-wrap">
+            <button type="button" className="btn btn-primary" onClick={handleGenerate} style={{ width: '100%', padding: '1rem' }}>
+              <UiIcon name="sparkle" size={18} />
+              Generate {FOCUS_AREAS.find(f => f.value === focus)?.label} reading
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Past readings */}
+      <details className="reading-wheel-details card" style={{ marginTop: '2rem', padding: '1rem 1.25rem' }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.9rem' }}>Optional: chart deep-dive</summary>
+        <div className="chart-container" style={{ marginTop: '1.25rem' }}>
+          <ChartWheel
+            planets={natal.positions || {}}
+            ascendant={ascLon}
+            size={Math.min(typeof window !== 'undefined' ? window.innerWidth - 80 : 400, 420)}
+            bgColor="var(--bg-card)"
+            strokeColor="var(--border)"
+            onPlanetClick={handlePlanetClick}
+            onAspectClick={handleAspectClick}
+          />
+        </div>
+      </details>
+
       <PastReadings readings={pastReadings} onSelect={handleSelectPast} />
 
       {/* Confirm Modal */}

@@ -17,6 +17,7 @@ import EphiMarkdown from '../components/EphiMarkdown.jsx';
 import { generateReturnReading } from '../lib/oracle.js';
 import { useToast } from '../components/Toast.jsx';
 import { Link } from 'react-router-dom';
+import { store } from '../lib/store.js';
 
 const ALL_PLANETS = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
 
@@ -58,12 +59,8 @@ export default function ProgressionsPage() {
 
   // Check purist mode
   useEffect(() => {
-    try {
-      const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
-      const settingsKey = uid ? `uid_${uid}__ephi_settings` : 'ephi_settings';
-      const settings = JSON.parse(localStorage.getItem(settingsKey) || '{}');
-      setPuristMode(settings.puristMode || false);
-    } catch {}
+    const settings = store.getJSON('ephi_settings') || {};
+    setPuristMode(settings.puristMode || false);
   }, []);
 
   // Compute birth year boundaries

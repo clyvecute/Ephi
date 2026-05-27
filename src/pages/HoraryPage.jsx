@@ -3,14 +3,16 @@ import { castHoraryChart, judgeChart, HOUSE_TOPICS } from '../lib/horary';
 import { getHoraryStrictures } from '../lib/hellenistic';
 import { UiIcon, PlanetIcon } from '../components/EphiIcons';
 import { NatalWheel } from '../components/AstroChartWheel';
-import { generateHoraryReading, continueHoraryReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
+import { generateHoraryReading, generatePrashnaReading, continueHoraryReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 import { store } from '../lib/store';
 import { analyzePrashna } from '../lib/jyotish/prashna.js';
 import { getPrecisionPositions, getPrecisionHouses } from '../lib/swe.js';
 import { getPanchanga } from '../lib/jyotish/panchanga.js';
+import { useNatal } from '../hooks/useNatal.js';
 
 export default function HoraryPage() {
+  const { natalChart } = useNatal();
   const [mode, setMode] = useState('western'); // 'western' | 'prashna'
   const [prashnaChart, setPrashnaChart] = useState(null);
 
@@ -116,13 +118,15 @@ export default function HoraryPage() {
         lat = coords.lat;
         lng = coords.lng;
       } else {
-        try {
-          const natal = store.getJSON('astro_natal');
-          if (natal?.meta?.lat && natal?.meta?.lng) {
-            lat = natal.meta.lat;
-            lng = natal.meta.lng;
-          }
-        } catch {}
+        if (natalChart?.meta?.lat != null && (natalChart?.meta?.lon != null || natalChart?.meta?.lng != null)) {
+          lat = natalChart.meta.lat;
+          lng = natalChart.meta.lon ?? natalChart.meta.lng;
+          if (!city.trim()) setCity(natalChart.meta.city || 'Natal location');
+        }
+      }
+
+      if (lat === 0 && lng === 0) {
+        throw new Error('Set a location: enter a city, use GPS, or save a natal chart with birth place.');
       }
 
       if (mode === 'prashna') {
@@ -197,6 +201,32 @@ export default function HoraryPage() {
       setError(err.message || 'Failed to cast horary chart.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePrashnaAiReading = async () => {
+    if (!prashnaChart) return;
+    setIsGenerating(true);
+    setAiError('');
+    try {
+      const res = await generatePrashnaReading({ question, prashnaChart });
+      setAiReading(res.text);
+      const newChat = [{ role: 'assistant', text: res.text }];
+      setChatHistory(newChat);
+      if (currentHistoryIndex !== -1) {
+        const updatedHistory = [...history];
+        updatedHistory[currentHistoryIndex] = {
+          ...updatedHistory[currentHistoryIndex],
+          aiReading: res.text,
+          chatHistory: newChat,
+        };
+        setHistory(updatedHistory);
+        store.setJSON('astro_horary_history', updatedHistory);
+      }
+    } catch (err) {
+      setAiError(err.message || 'Failed to generate Prashna synthesis.');
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -335,7 +365,7 @@ export default function HoraryPage() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Location of Question <span style={{ color: 'var(--accent)', fontSize: '0.65rem' }}>*</span></label>
+            <label className="form-label">Location of Question</label>
             <div style={{ position: 'relative' }}>
               <input
                 className="form-input"
@@ -348,7 +378,6 @@ export default function HoraryPage() {
                 placeholder="e.g., Manila"
                 disabled={loading}
                 style={{ paddingRight: '3rem' }}
-                required
               />
               <button 
                 type="button"
@@ -361,7 +390,7 @@ export default function HoraryPage() {
                 <UiIcon name="pin" size={18} color="var(--accent)" />
               </button>
             </div>
-            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Horary charts must be cast for the exact place where the question is asked.</span>
+            <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Use GPS, enter a city, or leave blank to use your saved natal chart location.</span>
           </div>
 
           {error && <div className="synastry-error-box">{error}</div>}
@@ -415,6 +444,31 @@ export default function HoraryPage() {
                    <UiIcon name="sparkle" size={12} /> {s.text}
                 </div>
               ))}
+            </div>
+          )}
+
+          {!puristMode && (
+            <div className="horary-ai-reading-section" style={{ marginTop: '3rem', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
+              {!aiReading && !isGenerating && isGeminiConfigured() && (
+                <div style={{ textAlign: 'center' }}>
+                  <button type="button" className="btn btn-primary" onClick={handlePrashnaAiReading}>
+                    <UiIcon name="sparkle" size={18} style={{ marginRight: 8 }} />
+                    Synthesize Prashna Oracle Reading
+                  </button>
+                </div>
+              )}
+              {isGenerating && (
+                <div style={{ textAlign: 'center', padding: '2rem' }}>
+                  <div className="spinner" style={{ margin: '0 auto 1rem' }} />
+                  <p style={{ color: 'var(--accent)' }}>Consulting the Oracle…</p>
+                </div>
+              )}
+              {aiError && <div className="synastry-error-box" style={{ marginTop: '1rem' }}>{aiError}</div>}
+              {aiReading && (
+                <div className="horary-ai-reading-content">
+                  <EphiMarkdown text={aiReading} />
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -3,7 +3,7 @@
 // The Gemini API key is stored as a Vercel Environment Variable (never exposed to client)
 
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
-const PRIMARY_MODEL   = 'gemini-3.1-pro-preview';
+const PRIMARY_MODEL   = process.env.GEMINI_MODEL || 'gemini-2.5-pro';
 const FALLBACK_MODEL  = 'gemini-flash-latest';
 
 const CORS_HEADERS = {
@@ -73,6 +73,9 @@ export default async function handler(req, res) {
   // ── Authentication ──────────────────────────────────────────────────────────
   // Verify Firebase ID token so only logged-in Ephi users can call the Oracle
   const authHeader = req.headers.authorization || '';
+  if (!authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Unauthorized: missing token' });
+  }
   if (authHeader.startsWith('Bearer ')) {
     const idToken = authHeader.split('Bearer ')[1];
     try {
@@ -92,7 +95,6 @@ export default async function handler(req, res) {
       return res.status(401).json({ error: 'Unauthorized: malformed token' });
     }
   }
-  // Note: Auth is optional during dev. Once launched publicly, enforce it strictly.
 
   // ── Payload ─────────────────────────────────────────────────────────────────
   const { prompt, fileUri, fileUris } = req.body;

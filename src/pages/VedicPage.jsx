@@ -3,16 +3,18 @@ import { Link } from 'react-router-dom';
 import { UiIcon } from '../components/EphiIcons';
 import VedicChart from '../components/VedicChart';
 import { getPlanetPositions, PLANET_META, ALL_PLANETS, getZodiacInfo } from '../lib/ephemeris';
-import { birthDataToDate, loadNatalChart } from '../lib/natal';
+import { birthDataToDate } from '../lib/natal';
 import { getPrecisionHouses } from '../lib/swe';
 import { getNakshatra, getNavamsaSign, getVimshottariDasha, SIGNS, getBhavaLord, getPlanetDignity } from '../lib/vedic';
 import { getPanchanga } from '../lib/jyotish/panchanga.js';
 import { DASHA_MEANINGS, NAKSHATRA_MEANINGS } from '../lib/vedicInterpretations';
 import { generateVedicReading, isGeminiConfigured } from '../lib/gemini.js';
 import EphiMarkdown from '../components/EphiMarkdown';
-import { store } from '../lib/store';
+import { useNatal } from '../hooks/useNatal.js';
+import { store } from '../lib/store.js';
 
 export default function VedicPage() {
+  const { natalChart } = useNatal();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [vedicData, setVedicData] = useState(null);
@@ -27,33 +29,29 @@ export default function VedicPage() {
   const [puristMode, setPuristMode] = useState(false);
 
   useEffect(() => {
-    const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
-    const settingsKey = uid ? `uid_${uid}__ephi_settings` : 'ephi_settings';
-    const settings = JSON.parse(localStorage.getItem(settingsKey) || '{}');
+    const settings = store.getJSON('ephi_settings') || {};
     setPuristMode(settings.puristMode || false);
-    calculateVedic();
   }, []);
 
   const calculateVedic = async () => {
     try {
-      const natal = loadNatalChart();
-      if (!natal || !natal.meta) {
+      if (!natalChart || !natalChart.meta) {
         setError('Please set up your birth profile first.');
         setLoading(false);
         return;
       }
 
-      const birthDate = birthDataToDate(natal.meta);
+      const birthDate = birthDataToDate(natalChart.meta);
       
       // Calculate Ascendant in Sidereal (Lahiri)
-      const houses = await getPrecisionHouses(birthDate, natal.meta.lat, natal.meta.lon, 'P', { sidereal: true });
+      const houses = await getPrecisionHouses(birthDate, natalChart.meta.lat, natalChart.meta.lon, 'P', { sidereal: true });
       const ascLon = houses.ascendant;
 
       // Get Sidereal Planet Positions
       const rawPositions = await getPlanetPositions(birthDate, ascLon, { 
         sidereal: true, 
-        lat: natal.meta.lat, 
-        lon: natal.meta.lon 
+        lat: natalChart.meta.lat, 
+        lon: natalChart.meta.lon 
       });
 
       // Prepare data for D-1 (Rasi) and D-9 (Navamsa)
@@ -137,7 +135,7 @@ export default function VedicPage() {
       });
 
       setDashaData(dasha);
-      setNatalName(natal.meta.name);
+      setNatalName(natalChart.meta.name);
       setLoading(false);
 
     } catch (err) {
@@ -145,6 +143,13 @@ export default function VedicPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    setLoading(true);
+    setError('');
+    setAiReading('');
+    calculateVedic();
+  }, [natalChart]);
 
   const handleGenerateInsight = async () => {
     if (!isGeminiConfigured()) {

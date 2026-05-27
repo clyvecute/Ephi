@@ -7,9 +7,10 @@ import React, { lazy, Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import NavBar from './components/NavBar';
 import { ToastProvider } from './components/Toast';
-import { scheduleAspectChecks, getPreferences } from './lib/notifications';
+import { scheduleAspectChecks, cancelChecks, getPreferences } from './lib/notifications';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import Footer from './components/Footer';
+import { getActiveChart } from './lib/profiles.js';
 
 // Lazy load pages — keeps initial bundle small
 const Landing     = lazy(() => import('./pages/Landing'));
@@ -34,7 +35,6 @@ const TransitCalendarPage = lazy(() => import('./pages/TransitCalendarPage.jsx')
 const ProgressionsPage    = lazy(() => import('./pages/ProgressionsPage.jsx'));
 import FeedbackModal from './components/FeedbackModal';
 import { logPageView } from './lib/analytics';
-import { store } from './lib/store';
 
 // Minimal full-screen loading state shown during lazy load
 function PageLoader() {
@@ -110,10 +110,11 @@ export default function App() {
     // 3. Start notifications background loop if enabled
     const prefs = getPreferences();
     if (prefs.enabled) {
-      try {
-        const natal = store.getJSON('astro_natal');
-        if (natal) scheduleAspectChecks(natal);
-      } catch {}
+      const natal = getActiveChart();
+      if (natal) scheduleAspectChecks(natal);
+      else cancelChecks();
+    } else {
+      cancelChecks();
     }
 
     // 4. Apply Dark Theme for specific routes
@@ -124,12 +125,28 @@ export default function App() {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    const syncNotifications = () => {
+      const prefs = getPreferences();
+      if (!prefs.enabled) {
+        cancelChecks();
+        return;
+      }
+      const natal = getActiveChart();
+      if (natal) scheduleAspectChecks(natal);
+      else cancelChecks();
+    };
+
+    window.addEventListener('storage', syncNotifications);
+    return () => window.removeEventListener('storage', syncNotifications);
+  }, []);
+
   return (
     <AuthProvider>
       <ToastProvider>
         <div style={styles.root}>
       {/* Persistent nav — visible on every page except Landing */}
-      {location.pathname !== '/' && <NavBar />}
+      {location.pathname !== '/' && location.pathname !== '/sys-archive' && <NavBar />}
 
       {/* Page content */}
       <div style={styles.content}>
@@ -196,7 +213,7 @@ export default function App() {
           </Suspense>
         </ErrorBoundary>
 
-        <Footer />
+        {location.pathname !== '/sys-archive' && <Footer />}
         <FeedbackModal />
       </div>
     </div>

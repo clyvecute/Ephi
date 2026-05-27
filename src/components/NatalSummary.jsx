@@ -4,7 +4,7 @@
  */
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { ALL_PLANETS, PLANET_META, getZodiacInfo, getPlanetPositions } from '../lib/ephemeris.js';
+import { ALL_PLANETS, PLANET_META, getZodiacInfo, getPlanetPositions, getPlacementLongitude } from '../lib/ephemeris.js';
 import { SIGN_RULERS } from '../lib/astronomy.js';
 import { calculateDignity, calculateLots } from '../lib/hellenistic.js';
 import { PlanetIcon, ZodiacIcon, UiIcon } from './EphiIcons.jsx';
@@ -145,12 +145,11 @@ export default function NatalSummary({ chart, onClear }) {
   const dignities = useMemo(() => {
     if (!positions) return {};
     const res = {};
-    Object.keys(positions).forEach(p => {
-      const val = positions[p];
-      if (val == null) return;
-      // Ensure we pass the raw longitude number
-      const lon = typeof val === 'number' ? val : (val.longitude ?? 0);
-      res[p] = calculateDignity(p, lon, meta.isDay);
+    const classical = ['sun','moon','mercury','venus','mars','jupiter','saturn'];
+    classical.forEach(pKey => {
+      const lon = getPlacementLongitude(positions, pKey);
+      if (lon == null || Number.isNaN(lon)) return;
+      res[pKey] = calculateDignity(pKey, lon, meta.isDay);
     });
     return res;
   }, [positions, meta.isDay]);
@@ -161,11 +160,7 @@ export default function NatalSummary({ chart, onClear }) {
     const ascLon = chart.houses?.[0]?.longitude ?? chart.ascendant?.longitude;
     if (ascLon == null) return null;
 
-    const getLon = (p) => {
-      const val = positions[p];
-      if (val == null) return 0;
-      return typeof val === 'number' ? val : (val.longitude ?? 0);
-    };
+    const getLon = (p) => getPlacementLongitude(positions, p) ?? 0;
 
     return calculateLots(
       ascLon,
@@ -288,12 +283,12 @@ export default function NatalSummary({ chart, onClear }) {
                         <span style={{ fontWeight: 600 }}>{p.label}</span>
                       </div>
                       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', background: 'var(--bg-surface)', padding: '2px 6px', borderRadius: '4px' }}>{d.status}</span>
+                        <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', background: 'var(--bg-surface)', padding: '2px 6px', borderRadius: '4px' }}>{d?.status ?? '—'}</span>
                         <span style={{ 
                           fontWeight: 800, 
-                          color: d.score > 0 ? 'var(--harmonic)' : d.score < 0 ? 'var(--tense)' : 'var(--text-muted)',
+                          color: (d?.score ?? 0) > 0 ? 'var(--harmonic)' : (d?.score ?? 0) < 0 ? 'var(--tense)' : 'var(--text-muted)',
                           minWidth: '24px', textAlign: 'right'
-                        }}>{d.score > 0 ? `+${d.score}` : d.score}</span>
+                        }}>{d ? (d.score > 0 ? `+${d.score}` : d.score) : '—'}</span>
                       </div>
                     </div>
                   );
@@ -333,38 +328,37 @@ export default function NatalSummary({ chart, onClear }) {
 
       {/* Natal planet table */}
       <div className="card">
-        <div className="card-title" style={{ marginBottom: '1rem' }}>Natal Placements</div>
+        <div className="card-title" style={{ marginBottom: '0.5rem' }}>Natal Placements</div>
+        <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: '1.25rem', lineHeight: 1.55 }}>
+          Layered meaning: what each planet represents, how your sign styles it, and which life area (house) it activates from your Ascendant.
+        </p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
           {ALL_PLANETS.map(key => {
-            const lon = positions?.[key];
+            const lon = getPlacementLongitude(positions, key);
             if (lon == null) return null;
-            
+
             const metaObj = PLANET_META[key];
             const zodiac = getZodiacInfo(lon);
-            const transitSignIndex = SIGNS.indexOf(zodiac.sign);
-            
-            let houseString = null;
-            let houseNum = null;
-            if (ascSignIndex !== null && transitSignIndex !== -1) {
-              houseNum = (transitSignIndex - ascSignIndex + 12) % 12;
-              houseString = HOUSE_NAMES[houseNum];
-            }
+            if (!zodiac) return null;
+            const signIdx = SIGNS.indexOf(zodiac.sign);
 
-            const interpretation = `${NATAL_PLANET_KEYWORDS[key]} is expressed ${NATAL_SIGN_KEYWORDS[zodiac.sign] || ''}`;
-            
-            let houseTheme = null;
-            if (houseNum !== null) {
-              houseTheme = `This energy ${HOUSE_THEMES[houseNum]}`;
+            let houseNum = null;
+            let houseString = null;
+            if (ascSignIndex !== null && signIdx !== -1) {
+              houseNum = (signIdx - ascSignIndex + 12) % 12;
+              houseString = HOUSE_NAMES[houseNum];
             }
 
             return (
               <div key={key} style={{
-                display: 'flex', flexDirection: 'column', gap: '0.4rem',
-                background: 'var(--bg-surface)', padding: '0.8rem 1rem',
+                display: 'flex', flexDirection: 'column', gap: '0.55rem',
+                background: 'var(--bg-surface)', padding: '0.9rem 1rem',
                 borderRadius: '8px', borderLeft: `3px solid ${metaObj.color}`,
-                borderTop: '1px solid var(--border)', borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)'
+                border: '1px solid var(--border)',
+                borderLeftWidth: '3px',
+                borderLeftColor: metaObj.color,
               }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <PlanetIcon name={key} size={18} color={metaObj.color} />
                     <strong style={{ fontSize: '0.95rem' }}>{metaObj.label} in {zodiac.sign}</strong>
@@ -374,14 +368,19 @@ export default function NatalSummary({ chart, onClear }) {
                     <span>{zodiac.displayStr}</span>
                   </div>
                 </div>
-                
-                <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', lineHeight: 1.4 }}>
-                  {interpretation} {houseTheme && <span>{houseTheme}</span>}
+
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                  <strong style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Planet · </strong>
+                  {NATAL_PLANET_KEYWORDS[key]}
                 </div>
-                
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                  <strong style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Sign · </strong>
+                  Expressed {NATAL_SIGN_KEYWORDS[zodiac.sign] || `through ${zodiac.sign} qualities.`}
+                </div>
                 {houseString && (
-                  <div style={{ fontSize: '0.8rem', color: 'var(--accent-dark)', marginTop: '0.2rem', fontWeight: 500 }}>
-                    ✦ Placed in your {houseString}
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    <strong style={{ color: 'var(--accent)', fontSize: '0.68rem', letterSpacing: '0.08em', textTransform: 'uppercase' }}>House · </strong>
+                    {HOUSE_THEMES[houseNum]} In practice: {houseString}.
                   </div>
                 )}
               </div>

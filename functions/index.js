@@ -8,6 +8,11 @@ admin.initializeApp();
 // Hardcode API Key via Firebase config, or env var
 // e.g. firebase functions:config:set gemini.key="YOUR_API_KEY"
 const getApiKey = () => functions.config().gemini?.key || process.env.GEMINI_API_KEY;
+const getDefaultModel = () => (
+  functions.config().gemini?.model ||
+  process.env.GEMINI_MODEL ||
+  'gemini-2.5-pro'
+);
 
 exports.generateReading = functions.https.onRequest((req, res) => {
   cors(req, res, async () => {
@@ -27,7 +32,7 @@ exports.generateReading = functions.https.onRequest((req, res) => {
     }
 
     // 2. Parse payload
-    const { prompt, model = 'gemini-3.1-pro-preview', fileUri } = req.body;
+    const { prompt, model = getDefaultModel(), fileUri } = req.body;
     if (!prompt) {
       return res.status(400).json({ error: 'Bad Request: Missing prompt' });
     }

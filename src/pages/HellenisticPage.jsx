@@ -5,66 +5,67 @@
 
 import { useState, useEffect } from 'react';
 import { calculateProfections, calculateFirdaria, calculateLots } from '../lib/hellenistic';
-import { store } from '../lib/store';
+import { useNatal } from '../hooks/useNatal.js';
 
 export default function HellenisticPage() {
-  const [natal, setNatal] = useState(null);
+  const { natalChart: natal } = useNatal();
   const [profection, setProfection] = useState(null);
   const [firdaria, setFirdaria] = useState([]);
   const [lots, setLots] = useState(null);
   const [isDayChart, setIsDayChart] = useState(true);
 
   useEffect(() => {
-    try {
-      const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
-      const key = uid ? `uid_${uid}__astro_natal` : 'astro_natal';
-      const cached = localStorage.getItem(key);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        setNatal(parsed);
-        
-        const ascLon = parsed.ascendant?.longitude ?? parsed.positions.sun.longitude;
-        const birthDate = parsed.meta.date;
-        
-        // Profections
-        const prof = calculateProfections(ascLon, birthDate);
-        setProfection({
-          activatedHouse: prof.house,
-          profectedSign: prof.sign,
-          lordOfTheYear: prof.lord
-        });
-
-        // Determine if day/night chart (Sun above horizon)
-        // In Equal houses, Sun in 7-12 is above horizon
-        const sunLon = parsed.positions.sun.longitude ?? parsed.positions.sun;
-        const sunSignIdx = Math.floor(sunLon / 30);
-        const ascSignIdx = Math.floor(ascLon / 30);
-        const sunHouse = (sunSignIdx - ascSignIdx + 12) % 12 + 1;
-        const day = sunHouse >= 7 && sunHouse <= 12;
-        setIsDayChart(day);
-
-        // Firdaria
-        const fir = calculateFirdaria(birthDate, day);
-        setFirdaria(fir);
-
-        // Lots
-        const p = parsed.positions;
-        const getLon = (key) => typeof p[key] === 'number' ? p[key] : p[key].longitude;
-        const hermeticLots = calculateLots(
-          ascLon,
-          getLon('sun'),
-          getLon('moon'),
-          getLon('mars'),
-          getLon('jupiter'),
-          getLon('saturn'),
-          getLon('venus'),
-          getLon('mercury'),
-          day
-        );
-        setLots(hermeticLots);
+    const apply = (parsed) => {
+      if (!parsed) {
+        setProfection(null);
+        setFirdaria([]);
+        setLots(null);
+        return;
       }
-    } catch {}
-  }, []);
+
+      const ascLon = parsed.ascendant?.longitude ?? parsed.positions.sun.longitude;
+      const birthDate = parsed.meta.date;
+
+      // Profections
+      const prof = calculateProfections(ascLon, birthDate);
+      setProfection({
+        activatedHouse: prof.house,
+        profectedSign: prof.sign,
+        lordOfTheYear: prof.lord
+      });
+
+      // Determine if day/night chart (Sun above horizon)
+      // In Equal houses, Sun in 7-12 is above horizon
+      const sunLon = parsed.positions.sun.longitude ?? parsed.positions.sun;
+      const sunSignIdx = Math.floor(sunLon / 30);
+      const ascSignIdx = Math.floor(ascLon / 30);
+      const sunHouse = (sunSignIdx - ascSignIdx + 12) % 12 + 1;
+      const day = sunHouse >= 7 && sunHouse <= 12;
+      setIsDayChart(day);
+
+      // Firdaria
+      const fir = calculateFirdaria(birthDate, day);
+      setFirdaria(fir);
+
+      // Lots
+      const p = parsed.positions;
+      const getLon = (key) => typeof p[key] === 'number' ? p[key] : p[key].longitude;
+      const hermeticLots = calculateLots(
+        ascLon,
+        getLon('sun'),
+        getLon('moon'),
+        getLon('mars'),
+        getLon('jupiter'),
+        getLon('saturn'),
+        getLon('venus'),
+        getLon('mercury'),
+        day
+      );
+      setLots(hermeticLots);
+    };
+
+    apply(natal);
+  }, [natal]);
 
   if (!natal) {
     return (

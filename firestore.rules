@@ -2,10 +2,10 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper: Is the user the designated Admin?
-    // Replace 'YOUR_ADMIN_UID_HERE' with your actual Firebase UID
+    // Helper: Is the user a designated Admin?
+    // Set this with a Firebase Auth custom claim: { admin: true }.
     function isAdmin() {
-      return request.auth != null && request.auth.uid == 'YOUR_ADMIN_UID_HERE';
+      return request.auth != null && request.auth.token.admin == true;
     }
 
     // Feedback: Anyone logged in can send feedback, only Admin can read it.

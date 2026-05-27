@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { UiIcon } from '../components/EphiIcons';
+import { CREDIT_TIERS, getPayPalAcquireUrl } from '../lib/monetization.js';
 
 export default function SupportPage() {
   const [activeMethod, setActiveMethod] = useState('info');
@@ -58,11 +59,7 @@ export default function SupportPage() {
       <div style={{ maxWidth: '900px', margin: '0 auto 3rem' }}>
         <h2 style={{ fontFamily: 'var(--font-serif)', fontSize: '1.5rem', textAlign: 'center', marginBottom: '2rem' }}>✦ Divine Credits ✦</h2>
         <div className="responsive-grid-3">
-          {[
-            { id: 'tier_1', amount: 10,  price: '$3',    name: 'Neophyte', desc: '10 High-Precision Readings' },
-            { id: 'tier_2', amount: 50,  price: '$10',   name: 'Adept', desc: '50 Readings + Priority Support' },
-            { id: 'tier_3', amount: 200, price: '$30',   name: 'Master', desc: 'Unlimited Depth Archive' }
-          ].map(bundle => (
+          {CREDIT_TIERS.map(bundle => (
             <div key={bundle.id} className="ephi-card" style={{ 
               padding: '2rem', 
               textAlign: 'center', 
@@ -75,8 +72,13 @@ export default function SupportPage() {
               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '1.5rem' }}>Divine Credits</div>
               <div style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1rem' }}>{bundle.price}</div>
               <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', height: '2.5rem' }}>{bundle.desc}</p>
-              <button className={`btn ${bundle.id === 'tier_2' ? 'btn-primary' : 'btn-ghost'}`} style={{ width: '100%' }}>
-                Acquire
+              <button
+                type="button"
+                className={`btn ${bundle.id === 'tier_2' ? 'btn-primary' : 'btn-ghost'}`}
+                style={{ width: '100%' }}
+                onClick={() => window.open(getPayPalAcquireUrl(bundle.paypalAmount), '_blank', 'noopener,noreferrer')}
+              >
+                Acquire via PayPal
               </button>
             </div>
           ))}

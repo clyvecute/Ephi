@@ -5,6 +5,7 @@
  * Integrates Llama 3 (llama3-70b-8192) for extremely low-latency,
  * high-fidelity open source interpretations.
  */
+import { getBookForTool } from '../library.js';
 import { 
   formatNatal, 
   formatPatterns, 
@@ -149,6 +150,11 @@ Write a comprehensive relationship reading for ${nameA} and ${nameB}. Use a warm
 5. **Advice for the Path Ahead** (3 clear bullet points): Practical, grounded steps they can take to strengthen their bond and navigate their unique tensions.
 
 Avoid clichés and generic horoscopes. The reading should feel bespoke, sophisticated, and life-affirming. Avoid calling them "the natives." Use "you" and "your".`;
+
+  const libraryBooks = getBookForTool('synastry');
+  if (libraryBooks.length > 0) {
+    prompt += `\n\nCRITICAL: Base your synastry analysis on the techniques in: ${libraryBooks.map(b => b.name).join(', ')}. (Groq cannot read PDF attachments; use your training aligned to these named texts.)`;
+  }
 
   const text = await callGroq(prompt, 1400);
 

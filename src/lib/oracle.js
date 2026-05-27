@@ -10,6 +10,7 @@ import * as GeminiProvider from './gemini';
 import * as GroqProvider from './providers/groq';
 import * as OpenAIProvider from './providers/openai';
 import { store } from './store.js';
+import { checkAndDeductCredit } from './monetization.js';
 
 // Configuration: Which provider is active?
 const getActiveProvider = () => store.get('ephi_oracle_provider') || import.meta.env.VITE_ORACLE_PROVIDER || 'google';
@@ -19,11 +20,11 @@ const PRIMARY_PROVIDER = getActiveProvider();
  * Main entry point for generating astrological readings.
  */
 export async function generateReading(params) {
-  // Respect Purist Mode: If the user has disabled AI in settings, don't even call the API
   const settings = store.getJSON('ephi_settings') || {};
   if (settings.puristMode) {
     throw new Error('AI Synthesis is disabled in your Oracle Settings.');
   }
+  await checkAndDeductCredit();
 
   const provider = params.provider || getActiveProvider();
 
@@ -46,6 +47,7 @@ export async function generateReading(params) {
  * Generate a deep-dive reading for a single transit aspect.
  */
 export async function generateAspectReading(params) {
+  await checkAndDeductCredit();
   const provider = params.provider || PRIMARY_PROVIDER;
 
   switch (provider) {
@@ -64,6 +66,7 @@ export async function generateAspectReading(params) {
  * Generate a specialized synastry reading.
  */
 export async function generateSynastryReading(params) {
+  await checkAndDeductCredit();
   const provider = params.provider || PRIMARY_PROVIDER;
   switch (provider) {
     case 'google':
@@ -77,7 +80,17 @@ export async function generateSynastryReading(params) {
   }
 }
 
+export async function generatePrashnaReading(params) {
+  await checkAndDeductCredit();
+  const provider = params.provider || PRIMARY_PROVIDER;
+  if (provider === 'google') {
+    return await GeminiProvider.generatePrashnaReading(params);
+  }
+  throw new Error('Prashna AI synthesis requires the Google Gemini provider.');
+}
+
 export async function generateVedicReading(params) {
+  await checkAndDeductCredit();
   const provider = params.provider || PRIMARY_PROVIDER;
   switch (provider) {
     case 'google':
@@ -92,6 +105,7 @@ export async function generateVedicReading(params) {
 }
 
 export async function generateHoraryReading(params) {
+  await checkAndDeductCredit();
   const provider = params.provider || PRIMARY_PROVIDER;
   switch (provider) {
     case 'google':
@@ -106,6 +120,7 @@ export async function generateHoraryReading(params) {
 }
 
 export async function continueHoraryReading(params) {
+  await checkAndDeductCredit();
   const provider = params.provider || PRIMARY_PROVIDER;
   switch (provider) {
     case 'google':
@@ -117,6 +132,7 @@ export async function continueHoraryReading(params) {
 }
 
 export async function generateReturnReading(params) {
+  await checkAndDeductCredit();
   const provider = params.provider || PRIMARY_PROVIDER;
   switch (provider) {
     case 'google':

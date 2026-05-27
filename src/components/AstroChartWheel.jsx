@@ -82,6 +82,7 @@ export default function AstroChartWheel({
   mode       = 'natal',
   onAspectClick = null,
   onHouseClick  = null,
+  allowDownload = true,
 }) {
   const cx = size / 2;
   const cy = size / 2;
@@ -472,51 +473,54 @@ export default function AstroChartWheel({
         </svg>
       </div>
 
-      {/* SVG Download button */}
-      <button
-        onClick={handleDownloadSvg}
-        title="Download chart as SVG"
-        style={{
-          position:'absolute', bottom:10, right:48,
-          background:'rgba(255,255,255,0.9)', border:'1px solid #ddd',
-          borderRadius:'50%', width:30, height:30,
-          display:'flex', alignItems:'center', justifyContent:'center',
-          cursor:'pointer', color:'#666', boxShadow:'0 2px 8px rgba(0,0,0,0.1)',
-          fontSize:'9px', fontWeight:'800', zIndex:10,
-        }}
-      >
-        SVG
-      </button>
-
-      {/* Download button */}
-      <button
-        onClick={handleDownload}
-        title="Download chart as PNG"
-        style={{
-          position:'absolute', bottom:10, right:10,
-          background:'rgba(255,255,255,0.9)', border:'1px solid #ddd',
-          borderRadius:'50%', width:30, height:30,
-          display:'flex', alignItems:'center', justifyContent:'center',
-          cursor:'pointer', color:'#666', boxShadow:'0 2px 8px rgba(0,0,0,0.1)',
-          fontSize:'14px', zIndex:10,
-        }}
-      >
-        ↓
-      </button>
+      {allowDownload && (
+        <>
+          <button
+            type="button"
+            onClick={handleDownloadSvg}
+            title="Download chart as SVG"
+            style={{
+              position:'absolute', bottom:10, right:48,
+              background:'rgba(255,255,255,0.9)', border:'1px solid #ddd',
+              borderRadius:'50%', width:30, height:30,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', color:'#666', boxShadow:'0 2px 8px rgba(0,0,0,0.1)',
+              fontSize:'9px', fontWeight:'800', zIndex:10,
+            }}
+          >
+            SVG
+          </button>
+          <button
+            type="button"
+            onClick={handleDownload}
+            title="Download chart as PNG"
+            style={{
+              position:'absolute', bottom:10, right:10,
+              background:'rgba(255,255,255,0.9)', border:'1px solid #ddd',
+              borderRadius:'50%', width:30, height:30,
+              display:'flex', alignItems:'center', justifyContent:'center',
+              cursor:'pointer', color:'#666', boxShadow:'0 2px 8px rgba(0,0,0,0.1)',
+              fontSize:'14px', zIndex:10,
+            }}
+          >
+            ↓
+          </button>
+        </>
+      )}
     </div>
   );
 }
 
 // ─── Convenience wrappers ─────────────────────────────────────────────────────
 
-export function NatalWheel({ natal, aspects, onAspectClick, onHouseClick, size = 480 }) {
-  return <AstroChartWheel natal={natal} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="natal"/>;
+export function NatalWheel({ natal, aspects, onAspectClick, onHouseClick, size = 480, allowDownload = true }) {
+  return <AstroChartWheel natal={natal} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="natal" allowDownload={allowDownload}/>;
 }
 
-export function TransitWheel({ natal, transits, aspects, onAspectClick, onHouseClick, size = 480 }) {
-  return <AstroChartWheel natal={natal} transits={transits} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="transit"/>;
+export function TransitWheel({ natal, transits, aspects, onAspectClick, onHouseClick, size = 480, allowDownload = true }) {
+  return <AstroChartWheel natal={natal} transits={transits} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="transit" allowDownload={allowDownload}/>;
 }
 
-export function SynastryWheel({ personA, personB, aspects, onAspectClick, onHouseClick, size = 480 }) {
-  return <AstroChartWheel natal={personA} transits={personB} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="synastry"/>;
+export function SynastryWheel({ personA, personB, aspects, onAspectClick, onHouseClick, size = 480, allowDownload = true }) {
+  return <AstroChartWheel natal={personA} transits={personB} aspects={aspects} onAspectClick={onAspectClick} onHouseClick={onHouseClick} size={size} mode="synastry" allowDownload={allowDownload}/>;
 }

@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from './Toast';
 import { UiIcon } from './EphiIcons';
 import { store } from '../lib/store';
+import { useNatal } from '../hooks/useNatal.js';
 
 function getSignificantAspectCount() {
   try {
@@ -14,14 +15,6 @@ function getSignificantAspectCount() {
     ).length;
   } catch {
     return 0;
-  }
-}
-
-function hasNatalChart() {
-  try {
-    return Boolean(store.get('astro_natal'));
-  } catch {
-    return false;
   }
 }
 
@@ -38,15 +31,15 @@ function PulsingDot({ count }) {
 export default function NavBar() {
   const location = useLocation();
   const toast = useToast();
-  const { currentUser, loginWithGoogle, logout } = useAuth();
+  const { currentUser, credits, loginWithGoogle, logout } = useAuth();
+  const { natalChart } = useNatal();
   const [sigCount, setSigCount] = useState(0);
-  const [hasNatal, setHasNatal] = useState(false);
   const [puristMode, setPuristMode] = useState(false);
+  const hasNatal = Boolean(natalChart);
 
   useEffect(() => {
     function refresh() {
       setSigCount(getSignificantAspectCount());
-      setHasNatal(hasNatalChart());
       const settings = store.getJSON('ephi_settings') || {};
       setPuristMode(settings.puristMode || false);
     }
@@ -72,20 +65,6 @@ export default function NavBar() {
       isAi: true
     },
     { 
-      path: '/transit-calendar', 
-      label: 'Calendar', 
-      reqNatal: true, 
-      active: location.pathname === '/transit-calendar',
-      icon: 'star'
-    },
-    { 
-      path: '/progressions', 
-      label: 'Progressions', 
-      reqNatal: true, 
-      active: location.pathname === '/progressions',
-      icon: 'sparkle'
-    },
-    { 
       path: '/synastry', 
       label: 'Synastry', 
       reqNatal: true, 
@@ -95,7 +74,7 @@ export default function NavBar() {
     },
     { 
       path: '/tools', 
-      label: 'Tools Archive', 
+      label: 'Tools', 
       reqNatal: false, 
       active: location.pathname === '/tools',
       icon: 'star'
@@ -161,9 +140,15 @@ export default function NavBar() {
       <div className="nav-auth" style={{ paddingRight: '1rem', display: 'flex', alignItems: 'center' }}>
         {currentUser ? (
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center' }}>
-              <UiIcon name="star" size={14} style={{ marginRight: 6 }} />
-              {currentUser.displayName?.split(' ')[0] || 'User'}
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <span style={{
+                fontWeight: 700,
+                color: credits <= 1 ? 'var(--tense)' : 'var(--accent)',
+                fontVariantNumeric: 'tabular-nums',
+              }}>
+                ✦ {credits}
+              </span>
+              <span>{currentUser.displayName?.split(' ')[0] || 'User'}</span>
             </span>
             <button onClick={logout} className="btn btn-ghost" style={{ fontSize: '0.75rem', padding: '6px 12px' }}>
               Logout
@@ -178,4 +163,3 @@ export default function NavBar() {
     </nav>
   );
 }
-

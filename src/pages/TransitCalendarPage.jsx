@@ -13,6 +13,7 @@ import { calculateTransitCalendar } from '../lib/transitCalendar.js';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import EphiMarkdown from '../components/EphiMarkdown.jsx';
 import { useToast } from '../components/Toast.jsx';
+import { store } from '../lib/store.js';
 
 const ALL_TRANSIT_PLANETS = ['sun', 'moon', 'mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune', 'pluto'];
 
@@ -57,12 +58,8 @@ export default function TransitCalendarPage() {
 
   // Check purist mode
   useEffect(() => {
-    try {
-      const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
-      const settingsKey = uid ? `uid_${uid}__ephi_settings` : 'ephi_settings';
-      const settings = JSON.parse(localStorage.getItem(settingsKey) || '{}');
-      setPuristMode(settings.puristMode || false);
-    } catch {}
+    const settings = store.getJSON('ephi_settings') || {};
+    setPuristMode(settings.puristMode || false);
   }, []);
 
   const calculate = useCallback(async () => {

@@ -544,12 +544,55 @@ Write a comprehensive relationship reading for ${nameA} and ${nameB}. Use a warm
 
 Avoid clichés and generic horoscopes. The reading should feel bespoke, sophisticated, and life-affirming. Avoid calling them "the natives." Use "you" and "your."`;
 
-  const text = await callGemini(prompt, 1400);
+  const libraryBooks = getBookForTool('synastry');
+  const activeFileUris = libraryBooks.map(b => b.uri).filter(u => u && u !== 'pending_upload');
+  if (libraryBooks.length > 0) {
+    const bookLabels = libraryBooks.map(b => b.name).join(', ');
+    prompt += `\n\nCRITICAL RAG INSTRUCTION: Reference books are attached (${bookLabels}). Base relationship techniques, aspect weighting, and interpretive style on these documents — not generic pop astrology.`;
+  }
+
+  const text = await callGemini(prompt, 1400, null, activeFileUris.length ? activeFileUris : null);
 
   return {
     text,
     timestamp: new Date().toISOString(),
   };
+}
+
+/**
+ * Generate a Prashna (Vedic horary) reading from analyzePrashna output.
+ */
+export async function generatePrashnaReading({ question, prashnaChart }) {
+  const libraryBooks = getBookForTool('horary');
+  const validUris = libraryBooks.map(b => b.uri).filter(u => u && u !== 'pending_upload');
+
+  let prompt = `You are an expert in Prashna (Vedic horary astrology). Interpret this chart for the querent's question with clarity and compassion.
+
+QUESTION: "${question}"
+
+VERDICT: ${prashnaChart.verdict} (confidence: ${prashnaChart.confidence})
+SUMMARY: ${prashnaChart.summary}
+
+LAGNA LORD (Querent): ${prashnaChart.lagnaLord}
+TARGET LORD (Matter): ${prashnaChart.targetLord} — House ${prashnaChart.targetHouse} (${prashnaChart.targetSign})
+
+STRICTURES:
+${(prashnaChart.strictures || []).map(s => `• ${s.text}`).join('\n') || 'None'}
+
+Write a structured reading:
+1. **The Question & Chart Fitness** — Is the chart readable? Note strictures.
+2. **Significators** — Lagna lord vs target lord; strength and connection.
+3. **Verdict & Timing** — Clear yes/no/unclear with reasoning from Ithasala and Panchanga.
+4. **Practical Counsel** — Three grounded steps for the querent.
+
+Use "you" throughout. Avoid generic pop astrology.`;
+
+  if (libraryBooks.length > 0) {
+    prompt += `\n\nCRITICAL: Base techniques on: ${libraryBooks.map(b => b.name).join(', ')}.`;
+  }
+
+  const text = await callGemini(prompt, 1200, null, validUris.length ? validUris : null);
+  return { text, timestamp: new Date().toISOString() };
 }
 
 /**

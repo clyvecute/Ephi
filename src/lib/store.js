@@ -90,7 +90,8 @@ export const store = {
   /** Remove ALL legacy unscoped ephi/astro keys (migration helper) */
   clearLegacy() {
     const legacyKeys = [
-      'astro_natal', 'astro_aspects', 'astro_partners',
+      'astro_natal', 'astro_natal_profiles', 'astro_active_profile_id',
+      'astro_aspects', 'astro_partners',
       'astro_horary_history', 'astro_birth_form',
       'ephi_library', 'ephi_persona', 'ephi_settings',
       'ephi_oracle_provider', 'ephi_notification_prefs',

@@ -1622,3 +1622,291 @@ a, button, [role="button"], input[type="submit"], .btn, .tab-btn, .nav-link, .na
     stroke: #000 !important;
   }
 }
+
+/* ── Sys-Archive (admin console) ─────────────────────────────────────────── */
+.sys-archive-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-deep);
+}
+
+.sys-archive-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  border-bottom: 1px solid var(--border);
+  background: rgba(3, 3, 3, 0.92);
+  backdrop-filter: blur(12px);
+}
+
+.sys-archive-header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0.85rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.sys-archive-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 140px;
+}
+
+.sys-archive-brand-title {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.sys-archive-brand-sub {
+  display: block;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.sys-archive-nav {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  flex-wrap: wrap;
+}
+
+.sys-archive-nav-link {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  text-decoration: none;
+  padding: 0.45rem 0.75rem;
+  border-radius: 6px;
+  transition: var(--transition);
+}
+
+.sys-archive-nav-link:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.sys-archive-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-left: auto;
+}
+
+.sys-archive-user {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.sys-archive-exit {
+  font-size: 0.72rem !important;
+  padding: 6px 12px !important;
+}
+
+.sys-archive-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+}
+
+.sys-archive-page-header {
+  margin-bottom: 2.5rem;
+  text-align: left;
+}
+
+.sys-archive-page-header .page-title {
+  font-size: 2rem !important;
+  margin-bottom: 0.5rem !important;
+}
+
+.sys-archive-rag-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.sys-archive-panel {
+  height: 28rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.sys-archive-panel-head {
+  flex-shrink: 0;
+  padding: 1.25rem 1.5rem 1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.sys-archive-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 1rem 1.5rem 1.25rem;
+}
+
+.sys-archive-tool-row {
+  padding: 0.85rem 1rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  margin-bottom: 0.65rem;
+}
+
+.sys-archive-tool-row:last-child {
+  margin-bottom: 0;
+}
+
+.sys-archive-ref-line {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+}
+
+.sys-archive-ref-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.sys-archive-ref-name,
+.sys-archive-ref-uri {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sys-archive-ref-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.sys-archive-ref-uri {
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+}
+
+.sys-archive-section {
+  margin-top: 3.5rem;
+  padding-top: 3rem;
+  border-top: 1px solid var(--border);
+}
+
+/* ── Time picker display ─────────────────────────────────────────────────── */
+.ephi-time-display {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.05rem;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+.ephi-time-colon {
+  color: var(--accent);
+  font-weight: 700;
+  padding: 0 0.12rem;
+  opacity: 0.9;
+}
+
+.ephi-time-sep {
+  color: var(--text-muted);
+  font-weight: 600;
+  padding: 0 0.35rem;
+  user-select: none;
+}
+
+/* ── AI Reading page layout ──────────────────────────────────────────────── */
+.reading-page-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+.reading-page-aside {
+  padding: 1.25rem;
+  align-self: start;
+  position: sticky;
+  top: 1.5rem;
+}
+
+.reading-mode-toggle {
+  display: flex;
+  gap: 0.5rem;
+  background: var(--bg-deep);
+  padding: 4px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.reading-mode-toggle .btn {
+  flex: 1;
+  padding: 0.65rem;
+  font-size: 0.88rem;
+}
+
+.reading-section-hint {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-top: 0.75rem;
+  line-height: 1.5;
+}
+
+.reading-wheel-details summary {
+  list-style: none;
+}
+
+.reading-wheel-details summary::-webkit-details-marker {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .reading-page-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .reading-page-aside {
+    position: static;
+  }
+}
+
+@media (max-width: 900px) {
+  .sys-archive-rag-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .sys-archive-panel {
+    height: 22rem;
+  }
+
+  .sys-archive-header-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .sys-archive-header-actions {
+    margin-left: 0;
+    width: 100%;
+    justify-content: flex-end;
+  }
+}

@@ -98,3 +98,16 @@ export const PLANET_META = {
 
 
 export const ALL_PLANETS = Object.keys(PLANET_META);
+
+/** Resolve placement from chart positions (supports Sun/sun key styles). */
+export function getPlacement(positions, key) {
+  if (!positions || !key) return null;
+  return positions[key] ?? positions[key.charAt(0).toUpperCase() + key.slice(1)] ?? null;
+}
+
+export function getPlacementLongitude(positions, key) {
+  const val = getPlacement(positions, key);
+  if (val == null) return null;
+  const lon = typeof val === 'number' ? val : val.longitude;
+  return lon == null || Number.isNaN(lon) ? null : lon;
+}

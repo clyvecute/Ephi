@@ -1,7 +1,11 @@
 import { Link } from 'react-router-dom';
 import { UiIcon } from '../components/EphiIcons';
+import { useNatal } from '../hooks/useNatal.js';
 
 export default function ToolsPage() {
+  const { natalChart: activeChart, profiles } = useNatal();
+  const profileCount = profiles.length;
+
   const tools = [
     { 
       path: '/chronos', 
@@ -26,14 +30,6 @@ export default function ToolsPage() {
       desc: 'A Solar Return chart is cast every year on your birthday, providing a unique "theme" for the upcoming year of your life. Lunar Returns happen every month for emotional forecasting.',
       useCase: 'Best for: Planning your year ahead right around your birthday.',
       icon: 'sparkle' 
-    },
-    { 
-      path: '/transit-calendar',
-      name: 'Transit Calendar',
-      tag: 'New',
-      desc: 'A 30-day timeline of every exact aspect between the current sky and your natal chart, with precise times. Know when Mars squares your Moon before it happens.',
-      useCase: 'Best for: Planning your month around major transits.',
-      icon: 'refresh'
     },
     { 
       path: '/progressions',
@@ -85,6 +81,38 @@ export default function ToolsPage() {
         <p className="page-subtitle" style={{ maxWidth: '600px', lineHeight: 1.6 }}>
           Astrology is a vast discipline. While the Dashboard handles your daily transits, this archive contains specialized calculators and ancient techniques. 
         </p>
+      </div>
+
+      <div className="card" style={{ marginBottom: '2rem', padding: '1.25rem 1.5rem', borderLeft: '3px solid var(--accent)' }}>
+        <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+          ✦ Active natal chart
+        </div>
+        {activeChart ? (
+          <>
+            <div style={{ fontSize: '1.05rem', fontWeight: 600, marginBottom: '0.35rem' }}>
+              {activeChart.meta?.name || 'Unnamed chart'}
+            </div>
+            <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+              {activeChart.meta?.date}
+              {activeChart.meta?.city ? ` · ${activeChart.meta.city}` : ''}
+              {activeChart.sunSign ? ` · ☉ ${activeChart.sunSign}` : ''}
+              {activeChart.moonSign ? ` · ☽ ${activeChart.moonSign}` : ''}
+              {activeChart.risingSign ? ` · ↑ ${activeChart.risingSign}` : ''}
+            </div>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.75rem', marginBottom: 0 }}>
+              {profileCount > 1
+                ? `${profileCount} profiles saved — switch on Dashboard. Tools below use this active chart.`
+                : 'Specialist tools below read this chart from your account.'}
+            </p>
+            <Link to="/dashboard?tab=natal" className="btn btn-ghost" style={{ marginTop: '1rem', fontSize: '0.78rem', display: 'inline-flex' }}>
+              Edit on Dashboard →
+            </Link>
+          </>
+        ) : (
+          <p style={{ color: 'var(--text-secondary)', margin: 0, fontSize: '0.9rem' }}>
+            No natal chart yet. <Link to="/dashboard?tab=natal" style={{ color: 'var(--accent)' }}>Create one on the Dashboard</Link> — then Returns, Vedic, Hellenistic, and Progressions will use it.
+          </p>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '1.5rem', paddingBottom: '4rem' }}>

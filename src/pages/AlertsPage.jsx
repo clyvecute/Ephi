@@ -5,6 +5,7 @@ import {
   getAlertLog, checkNow, isSupported
 } from '../lib/notifications';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
+import EphiTimePicker from '../components/EphiTimePicker.jsx';
 
 const PLANETS = [
   { id: 'sun', label: 'Sun' },
@@ -171,10 +172,14 @@ export default function AlertsPage() {
                   />
                   Enable blackout period
                 </label>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                   <input type="time" className="form-input" style={{ width: 'auto', padding: '0.4rem 0.8rem' }} value={prefs.quietStart} onChange={e => updatePref('quietStart', e.target.value)} disabled={!prefs.quietHoursEnabled} />
-                   <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 600 }}>UNTIL</span>
-                   <input type="time" className="form-input" style={{ width: 'auto', padding: '0.4rem 0.8rem' }} value={prefs.quietEnd} onChange={e => updatePref('quietEnd', e.target.value)} disabled={!prefs.quietHoursEnabled} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', opacity: prefs.quietHoursEnabled ? 1 : 0.5, pointerEvents: prefs.quietHoursEnabled ? 'auto' : 'none' }}>
+                  <div style={{ flex: '1 1 100px', minWidth: '100px' }}>
+                    <EphiTimePicker value={prefs.quietStart} onChange={v => updatePref('quietStart', v)} />
+                  </div>
+                  <span className="ephi-time-sep" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>until</span>
+                  <div style={{ flex: '1 1 100px', minWidth: '100px' }}>
+                    <EphiTimePicker value={prefs.quietEnd} onChange={v => updatePref('quietEnd', v)} />
+                  </div>
                 </div>
               </div>
             </div>

@@ -3,15 +3,15 @@
 // Solar & Lunar Returns Page — /returns
 
 import { useState, useEffect } from 'react';
-import { findSolarReturn, findLunarReturn, getSecondaryProgressions } from '../lib/returns';
+import { findSolarReturn, findLunarReturn } from '../lib/returns';
 import { TransitWheel } from '../components/AstroChartWheel';
 import { PlanetIcon, UiIcon } from '../components/EphiIcons.jsx';
 import { generateReturnReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle.js';
 import EphiMarkdown from '../components/EphiMarkdown.jsx';
-import { store } from '../lib/store';
+import { useNatal } from '../hooks/useNatal.js';
 
 export default function ReturnsPage() {
-  const [natal, setNatal] = useState(null);
+  const { natalChart: natal } = useNatal();
   const [mode, setMode] = useState('solar');
   const [year, setYear] = useState(new Date().getFullYear());
   const [returnChart, setReturnChart] = useState(null);
@@ -21,15 +21,6 @@ export default function ReturnsPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState('');
   const [aiReading, setAiReading] = useState('');
-
-  useEffect(() => {
-    try {
-      const uid = JSON.parse(localStorage.getItem('ephi_current_uid') || 'null');
-      const key = uid ? `uid_${uid}__astro_natal` : 'astro_natal';
-      const cached = localStorage.getItem(key);
-      if (cached) setNatal(JSON.parse(cached));
-    } catch {}
-  }, []);
 
   const calculateReturn = async () => {
     if (!natal?.positions?.sun) {

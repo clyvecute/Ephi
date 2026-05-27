@@ -33,11 +33,18 @@ const SE_SIDM_YUKTESHWAR      = 7;   // Sri Yukteshwar
 // Expose current ayanamsa setting so VedicPage can display it
 export let currentAyanamsa = SE_SIDM_LAHIRI;
 
+function resolveSweFn(mod, base) {
+  if (typeof mod[`_${base}`] === 'function') return base;
+  const wrap = `${base}_wrap`;
+  if (typeof mod[`_${wrap}`] === 'function') return wrap;
+  return null;
+}
+
 export function setAyanamsa(mode) {
   currentAyanamsa = mode;
-  // If WASM is already loaded, update it immediately
-  if (wasmModule) {
-    wasmModule.ccall('swe_set_sid_mode', null, ['number','number','number'], [mode, 0, 0]);
+  const fn = wasmModule?.__FN?.set_sid_mode;
+  if (wasmModule && fn && typeof wasmModule[`_${fn}`] === 'function') {
+    wasmModule.ccall(fn, null, ['number', 'number', 'number'], [mode, 0, 0]);
   }
 }
 
@@ -71,13 +78,16 @@ export async function initSwe() {
       // Standard @swisseph/browser builds export WITHOUT _wrap suffix.
       // Some custom builds add _wrap. We probe once and use the result everywhere.
       const FN = {
-        julday:    typeof mod._swe_julday      === 'function' ? 'swe_julday'      : 'swe_julday_wrap',
-        calc_ut:   typeof mod._swe_calc_ut     === 'function' ? 'swe_calc_ut'     : 'swe_calc_ut_wrap',
-        houses:    typeof mod._swe_houses      === 'function' ? 'swe_houses'      : 'swe_houses_wrap',
-        rise_trans:typeof mod._swe_rise_trans  === 'function' ? 'swe_rise_trans'  : 'swe_rise_trans_wrap',
-        version:   typeof mod._swe_version     === 'function' ? 'swe_version'     : 'swe_version_wrap',
-        set_sid_mode: typeof mod._swe_set_sid_mode === 'function' ? 'swe_set_sid_mode' : 'swe_set_sid_mode_wrap',
+        julday: resolveSweFn(mod, 'swe_julday'),
+        calc_ut: resolveSweFn(mod, 'swe_calc_ut'),
+        houses: resolveSweFn(mod, 'swe_houses'),
+        rise_trans: resolveSweFn(mod, 'swe_rise_trans'),
+        version: resolveSweFn(mod, 'swe_version'),
+        set_sid_mode: resolveSweFn(mod, 'swe_set_sid_mode'),
       };
+      if (!FN.julday || !FN.calc_ut) {
+        throw new Error('[SWE] Required exports swe_julday / swe_calc_ut missing from WASM module.');
+      }
       // Make the probe visible for debugging
       console.log('[SWE] Detected function names:', FN);
 
@@ -98,13 +108,15 @@ export async function initSwe() {
       // Store FN map on the module so calcPlanet / houses / rise_trans can read it
       mod.__FN = FN;
 
-      // Set Lahiri ayanamsa explicitly
-      mod.ccall(FN.set_sid_mode, null, ['number','number','number'],
-        [SE_SIDM_LAHIRI, 0, 0]);
+      if (FN.set_sid_mode) {
+        mod.ccall(FN.set_sid_mode, null, ['number', 'number', 'number'], [SE_SIDM_LAHIRI, 0, 0]);
+      } else {
+        console.warn('[SWE] swe_set_sid_mode not exported; sidereal uses WASM default ayanamsa.');
+      }
 
       const version = _swe_version();
       console.log('[SWE] Professional Ephemeris initialized:', version);
-      console.log('[SWE] Ayanamsa: Lahiri (Chitrapaksha)');
+      if (FN.set_sid_mode) console.log('[SWE] Ayanamsa: Lahiri (Chitrapaksha)');
       return mod;
     } catch (err) {
       console.error('[SWE] Failed to initialize WASM:', err);
