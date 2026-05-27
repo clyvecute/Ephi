@@ -147,6 +147,7 @@ export function AuthProvider({ children }) {
           setCurrentUser(user);
         }
       } else {
+        setCurrentUser(null);
         setCredits(0);
         unsubs.forEach(unsub => unsub());
         unsubs = [];
