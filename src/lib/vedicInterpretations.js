@@ -1,2 +1,41 @@
-export const DASHA_MEANINGS = {};
-export const NAKSHATRA_MEANINGS = {};
+export const DASHA_MEANINGS = {
+  ketu: "A period of spiritual detachment, introspection, and deep internal transformation. Worldly ambitions may take a backseat to the search for ultimate truth.",
+  venus: "A period of luxury, relationship harmony, artistic expression, material comfort, and sensual pleasures. Highly creative and socially active.",
+  sun: "A period of high ambition, authority, leadership, professional recognition, and self-realization. Focus on career and public visibility.",
+  moon: "A period of emotional sensitivity, focus on home and family, nurturing, intuition, and mental peace. Fluctuations in mood or focus.",
+  mars: "A period of high energy, initiative, courage, competition, and physical activity. Watch for impulsiveness or conflict.",
+  rahu: "A period of intense desires, material ambition, worldly expansion, unconventional growth, and foreign travels. Can be highly erratic but rewarding.",
+  jupiter: "A period of wisdom, spiritual growth, higher learning, expansion of intellect, optimism, and overall good fortune.",
+  saturn: "A period of discipline, hard work, responsibility, delay, karmic learning, and structural rebuilding. Slow but steady progress.",
+  mercury: "A period of communication, intellectual pursuits, commerce, learning, writing, and socialization. Excellent for business and analytical thinking."
+};
+
+export const NAKSHATRA_MEANINGS = {
+  Ashwini: "Pioneering, energetic, swift, healing, and courageous, marked by a spirit of adventure.",
+  Bharani: "Transformative, passionate, bearing struggle, and dedicated to creative fertility.",
+  Krittika: "Sharp, purifying, ambitious, fiercely protective, and burning with analytical intelligence.",
+  Rohini: "Beautiful, sensual, creative, magnetic, and nurturing of growth, agriculture, and performance.",
+  Mrigashira: "Searching, inquisitive, gentle, travel-loving, and constantly seeking new experience and knowledge.",
+  Ardra: "Stormy, cathartic, destructive yet renewing, emotional, and breaking structures for truth.",
+  Punarvasu: "Renewing, returning of light, safety, hopeful, prosperous, and nurturing of cosmic order.",
+  Pushya: "Most auspicious, nurturing, spiritual, protective, sustaining of law, and motherly.",
+  Ashlesha: "Mysterious, hypnotic, serpent-like, intense, highly intuitive, and sharp-witted.",
+  Magha: "Royal, ancestral, authoritative, seeking power, noble, and deeply rooted in tradition.",
+  "Purva Phalguni": "Joyous, relaxing, creative, relationship-oriented, seeking beauty and aesthetic satisfaction.",
+  "Uttara Phalguni": "Dutiful, helpful, relationship-focused, patronizing, seeking societal contribution.",
+  Hasta: "Craftsmanship, healing hands, cleverness, humor, and mastery over skill and detail.",
+  Chitra: "Brilliant design, creative architecture, artistic, visually striking, and charismatic.",
+  Swati: "Independent, wind-like, versatile, diplomatic, seeking freedom and balance.",
+  Vishakha: "Goal-oriented, ambitious, highly focused, competitive, and striving for triumph.",
+  Anuradha: "Devotional, friendly, cooperative, loving, and nurturing of long-lasting bonds.",
+  Jyeshtha: "Elder, protective, authoritative, occult knowledge, defending status and power.",
+  Mula: "Rooted, destructive, direct, seeking truth at the absolute core, transformative.",
+  "Purva Ashadha": "Invincible, proud, water-like, ambitious, seeking improvement and victory.",
+  "Uttara Ashadha": "Noble, victorious, enduring, universally supportive, dedicated to truth.",
+  Shravana: "Hearing, listening, learning, highly scholarly, seeking knowledge and oral tradition.",
+  Dhanishta: "Wealthy, musical, high rhythm, cooperative, ambitious, and widely recognized.",
+  Shatabhisha: "Healing, secretive, hundred physicians, highly mystical, shielding, and revolutionary.",
+  "Purva Bhadrapada": "Fierce, eccentric, highly spiritual, visionary, transformative, and dual-natured.",
+  "Uttara Bhadrapada": "Deep wisdom, cosmic sleep, serene, patient, protective, and spiritually advanced.",
+  Revati: "Welcoming, path-finder, nurturing of travelers, highly empathetic, imaginative, and final liberation."
+};

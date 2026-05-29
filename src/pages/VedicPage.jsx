@@ -8,7 +8,7 @@ import { getPrecisionHouses } from '../lib/swe';
 import { getNakshatra, getNavamsaSign, getVimshottariDasha, SIGNS, getBhavaLord, getPlanetDignity } from '../lib/vedic';
 import { getPanchanga } from '../lib/jyotish/panchanga.js';
 import { DASHA_MEANINGS, NAKSHATRA_MEANINGS } from '../lib/vedicInterpretations';
-import { generateVedicReading, isGeminiConfigured } from '../lib/gemini.js';
+import { generateVedicReading, isOracleConfigured as isGeminiConfigured } from '../lib/oracle';
 import EphiMarkdown from '../components/EphiMarkdown';
 import { useNatal } from '../hooks/useNatal.js';
 import { store } from '../lib/store.js';

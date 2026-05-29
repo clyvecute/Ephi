@@ -136,7 +136,7 @@ export default function TransitCalendarPage() {
   const handleSynthesize = async (asp) => {
     setDeepDive({ asp, loading: true, text: '' });
     try {
-      const { generateAspectReading } = await import('../lib/gemini');
+      const { generateAspectReading } = await import('../lib/oracle');
       const res = await generateAspectReading({
         transitPlanet: asp.transitPlanet,
         natalPlanet: asp.natalPlanet,

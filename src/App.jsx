@@ -205,7 +205,8 @@ export default function App() {
               {/* About page */}
               <Route path="/about" element={<AboutPage />} />
 
-
+              {/* Admin Panel */}
+              <Route path="/admin" element={<ProtectedRoute><AdminPage /></ProtectedRoute>} />
 
               {/* Catch-all — redirect unknown routes to dashboard */}
               <Route path="*" element={<Navigate to="/dashboard" replace />} />

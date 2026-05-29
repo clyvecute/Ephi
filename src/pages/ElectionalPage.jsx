@@ -6,7 +6,7 @@ import { UiIcon } from '../components/EphiIcons';
 import { useToast } from '../components/Toast';
 import EphiMarkdown from '../components/EphiMarkdown';
 import ChartWheel from '../components/AstroChartWheel.jsx';
-import { generateReading } from '../lib/gemini.js';
+import { generateReading } from '../lib/oracle';
 import { useAuth } from '../contexts/AuthContext';
 import { getPanchanga, getHora, getChoghadiya, getKalaStatus } from '../lib/jyotish/panchanga.js';
 import { scoreMuhurta } from '../lib/jyotish/muhurta.js';
