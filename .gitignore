@@ -35,3 +35,10 @@ test-*.js
 scratch-*.js
 upload-*.js
 extract.cjs
+
+# Audits, plans, and reference guides
+*audit*.html
+*AUDIT*.md
+*plan*.md
+*guide*.txt
+*SUMMARY*.md
