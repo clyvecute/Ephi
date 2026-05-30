@@ -75,10 +75,10 @@ export default function SupportPage() {
               <button
                 type="button"
                 className={`btn ${bundle.id === 'tier_2' ? 'btn-primary' : 'btn-ghost'}`}
-                style={{ width: '100%' }}
-                onClick={() => window.open(getPayPalAcquireUrl(bundle.paypalAmount), '_blank', 'noopener,noreferrer')}
+                style={{ width: '100%', opacity: 0.6, cursor: 'not-allowed' }}
+                disabled={true}
               >
-                Acquire via PayPal
+                Acquire via PayPal (Coming Soon)
               </button>
             </div>
           ))}

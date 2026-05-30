@@ -169,11 +169,19 @@ export default function HoraryPage() {
       const castedChart = await castHoraryChart(question, new Date(), lat, lng);
       const horaryJudgment = judgeChart(castedChart);
       
+      const planetaryLongitudes = {};
+      if (castedChart.planets) {
+        for (const [key, p] of Object.entries(castedChart.planets)) {
+          planetaryLongitudes[key] = p.longitude;
+        }
+      }
+
       const s = getHoraryStrictures(
         castedChart.asc.longitude, 
         castedChart.planets.moon.longitude,
         null, 
-        null  
+        null,
+        planetaryLongitudes
       );
 
       setChart(castedChart);

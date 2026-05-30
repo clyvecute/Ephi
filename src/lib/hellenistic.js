@@ -88,7 +88,7 @@ export function calculateDignity(planet, lon, isDay) {
  * Horary Strictures against Judgment.
  * Used by professional horary astrologers to determine if a chart is readable.
  */
-export function getHoraryStrictures(ascLon, moonLon, moonPhase, hourLord) {
+export function getHoraryStrictures(ascLon, moonLon, moonPhase, hourLord, chartPositions = null) {
   const strictures = [];
   const ascDegree = ascLon % 30;
   
@@ -100,8 +100,45 @@ export function getHoraryStrictures(ascLon, moonLon, moonPhase, hourLord) {
   const viaCombusta = moonLon > 195 && moonLon < 225; // 15 Lib to 15 Sco
   if (viaCombusta) strictures.push("Moon is in Via Combusta (15° Libra - 15° Scorpio). Unpredictable outcome.");
   
-  // Void of Course (Simplified: Last 2 degrees of any sign)
-  if (moonLon % 30 > 28) strictures.push("Moon is Void of Course. Nothing will come of this matter.");
+  // Void of Course
+  if (chartPositions) {
+    const nextSignEdge = (moonSignIdx + 1) * 30;
+    const distToEdge = nextSignEdge - moonLon;
+    
+    // Check if moon makes any exact ptolemaic aspect to traditional planets before leaving sign
+    const targets = ['sun', 'mercury', 'venus', 'mars', 'jupiter', 'saturn'];
+    const ptolemaicAngles = [0, 60, 90, 120, 180];
+    let hasApplyingAspect = false;
+    
+    for (const t of targets) {
+      if (chartPositions[t] == null) continue;
+      let pLon = chartPositions[t];
+      
+      for (const angle of ptolemaicAngles) {
+        const exact1 = (pLon + angle) % 360;
+        const exact2 = (pLon - angle + 360) % 360;
+        
+        const checkForward = (exact) => {
+           let dist = exact - moonLon;
+           if (dist < 0) dist += 360;
+           return dist > 0 && dist < distToEdge; // Must reach exact aspect before entering next sign
+        };
+        
+        if (checkForward(exact1) || checkForward(exact2)) {
+          hasApplyingAspect = true;
+          break;
+        }
+      }
+      if (hasApplyingAspect) break;
+    }
+    
+    if (!hasApplyingAspect) {
+      strictures.push("Moon is Void of Course. Nothing will come of this matter.");
+    }
+  } else {
+    // Simplified fallback: Last 2 degrees of any sign
+    if (moonLon % 30 > 28) strictures.push("Moon is Void of Course. Nothing will come of this matter.");
+  }
 
   return strictures;
 }
@@ -144,12 +181,36 @@ export function calculateFirdaria(birthDate, isDayChart) {
     const endDate = new Date(birth);
     endDate.setFullYear(birth.getFullYear() + endYear);
     
+    const subPeriods = [];
+    if (planet !== 'nn' && planet !== 'sn') {
+      const chaldean = ['saturn', 'jupiter', 'mars', 'sun', 'venus', 'mercury', 'moon'];
+      const startIndex = chaldean.indexOf(planet);
+      const subDurationYears = duration / 7;
+      
+      let subCurrentDate = new Date(startDate);
+      
+      for (let i = 0; i < 7; i++) {
+        const subLordIndex = (startIndex + i) % 7;
+        const subLord = chaldean[subLordIndex];
+        
+        const subEndDate = new Date(subCurrentDate.getTime() + subDurationYears * 365.25 * 24 * 60 * 60 * 1000);
+        
+        subPeriods.push({
+          planet: subLord,
+          startDate: subCurrentDate.toISOString(),
+          endDate: subEndDate.toISOString()
+        });
+        subCurrentDate = subEndDate;
+      }
+    }
+    
     periods.push({
       planet,
       startYear,
       endYear,
       startDate: startDate.toISOString(),
       endDate: endDate.toISOString(),
+      subPeriods,
     });
     currentYear += duration;
   }

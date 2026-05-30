@@ -1,0 +1,72 @@
+
+<style>
+  body { font-size: 14px; color: var(--color-text-primary); padding: 1rem 0; }
+  .verdict { display: flex; align-items: center; gap: 12px; padding: 14px 18px; border-radius: var(--border-radius-lg); border: 1px solid #C0DD97; background: #EAF3DE; margin-bottom: 1.5rem; }
+  .verdict-text { font-size: 15px; font-weight: 500; color: #27500A; }
+  .verdict-sub { font-size: 12px; color: #3B6D11; margin-top: 2px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.5rem; }
+  .sc { border-radius: var(--border-radius-lg); border: 1px solid; padding: 10px 12px; text-align: center; }
+  .sc-green { background: #EAF3DE; border-color: #C0DD97; }
+  .sc-green .n { color: #3B6D11; } .sc-green .l { color: #27500A; }
+  .sc-amber { background: #FAEEDA; border-color: #FAC775; }
+  .sc-amber .n { color: #BA7517; } .sc-amber .l { color: #854F0B; }
+  .sc-blue { background: #E6F1FB; border-color: #B5D4F4; }
+  .sc-blue .n { color: #185FA5; } .sc-blue .l { color: #042C53; }
+  .n { font-size: 22px; font-weight: 500; }
+  .l { font-size: 11px; margin-top: 2px; }
+  .section-title { font-size: 15px; font-weight: 500; margin: 1.2rem 0 0.5rem; border-bottom: 1px solid var(--color-border-tertiary); padding-bottom: 0.4rem; }
+  .item { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--color-border-tertiary); }
+  .item:last-child { border-bottom: none; }
+  .badge { display: inline-block; font-size: 10px; font-weight: 500; border-radius: 3px; padding: 2px 7px; min-width: 60px; text-align: center; white-space: nowrap; }
+  .b-ok   { background: #EAF3DE; color: #27500A; }
+  .b-warn { background: #FAEEDA; color: #633806; }
+  .b-info { background: #E6F1FB; color: #042C53; }
+  .b-dep  { background: #F3F0FF; color: #3C3489; }
+  .item-body { flex: 1; }
+  .item-title { font-weight: 500; font-size: 13px; color: var(--color-text-primary); }
+  .item-desc { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; line-height: 1.5; }
+  code { font-family: var(--font-mono); font-size: 11px; background: var(--color-background-secondary); padding: 1px 4px; border-radius: 3px; }
+</style>
+
+<div class="verdict">
+  <span style="font-size:22px">✅</span>
+  <div>
+    <div class="verdict-text">Codebase is clean — ready to deploy</div>
+    <div class="verdict-sub">All runtime crashes resolved. All prior fixes confirmed in live code. One file still needs committing.</div>
+  </div>
+</div>
+
+<div class="summary-grid">
+  <div class="sc sc-green"><div class="n">0</div><div class="l">Runtime crashes</div></div>
+  <div class="sc sc-green"><div class="n">11</div><div class="l">Fixes confirmed live</div></div>
+  <div class="sc sc-amber"><div class="n">1</div><div class="l">Needs commit</div></div>
+</div>
+
+<div class="section-title">✅ All prior fixes confirmed in live code</div>
+<div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">HellenisticPage — position key case fix</div><div class="item-desc">getLon() helper handles both <code>Sun</code>/<code>sun</code> correctly. No more longitude crash.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">ReturnsPage — position key case fix</div><div class="item-desc">getNatalLon() helper applied to all natal position reads.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">gemini.js — isGeminiConfigured no longer references undefined API_KEY</div><div class="item-desc">Now checks <code>Boolean(PROXY_URL)</code>. ReadingPage loads without crash.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">index.css — textarea text colour fixed</div><div class="item-desc"><code>color: var(--text-primary)</code> — custom question input is now visible on both themes.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">api/oracle.js — key read per-request, correct model names, GET diagnostic</div><div class="item-desc">gemini-2.0-flash / gemini-1.5-flash. GEMINI_API_KEY read inside handler, not at module load.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">ElectionalPage, Dashboard, TransitCalendarPage — now route through oracle.js</div><div class="item-desc">No more direct gemini.js AI calls from pages. All AI traffic goes through the proxy.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">VedicPage — imports from oracle.js</div><div class="item-desc">generateVedicReading and isOracleConfigured both from oracle.js. Proxy-safe.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">/admin route added to App.jsx</div><div class="item-desc">AdminPage is now reachable at <code>/admin</code>. UID gating via VITE_ADMIN_UID is correct.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">ToolsPage links all hidden pages</div><div class="item-desc">Hellenistic, Vedic, BaZi, Horary, Returns, Chronos, Alerts — all discoverable via /tools.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">GEMINI_API_KEY in git history purged</div><div class="item-desc">test-models.js removed. No AIzaSy key found in any commit. History is clean.</div></div></div>
+  <div class="item"><span class="badge b-ok">Live ✓</span><div class="item-body"><div class="item-title">vedicInterpretations — all 9 dashas confirmed</div><div class="item-desc">Dasha periods fully described. Was already in the last commit.</div></div></div>
+</div>
+
+<div class="section-title">⚠️ Needs one more commit</div>
+<div>
+  <div class="item"><span class="badge b-warn">Commit now</span><div class="item-body"><div class="item-title">vedicInterpretations.js — all 27 nakshatras added locally, not yet pushed</div><div class="item-desc">The live repo still only has 6 nakshatras. The completed file (27 nakshatras + 9 dashas) is attached above. Commit and push to fix blank Nakshatra meaning blocks on VedicPage.</div></div></div>
+</div>
+
+<div class="section-title">ℹ️ Known post-launch items (no blocker)</div>
+<div>
+  <div class="item"><span class="badge b-info">Post-launch</span><div class="item-body"><div class="item-title">Monetization — no payment integration yet</div><div class="item-desc">Credits decrement but can't be purchased. Hide credit-gated CTAs or add "coming soon" label.</div></div></div>
+  <div class="item"><span class="badge b-info">Post-launch</span><div class="item-body"><div class="item-title">VOC Moon — approximation only</div><div class="item-desc">Flags last 2° of sign instead of doing a real forward aspect scan. Functional but not precise.</div></div></div>
+  <div class="item"><span class="badge b-info">Post-launch</span><div class="item-body"><div class="item-title">Firdaria sub-periods missing</div><div class="item-desc">Major Firdaria periods display correctly. Sub-lord breakdown not yet implemented.</div></div></div>
+  <div class="item"><span class="badge b-info">Post-launch</span><div class="item-body"><div class="item-title">Synastry composite chart missing</div><div class="item-desc">Bi-wheel and aspect grid work. Midpoint composite is a documented future feature.</div></div></div>
+  <div class="item"><span class="badge b-dep">Security</span><div class="item-body"><div class="item-title">Groq / OpenAI keys still client-side (VITE_)</div><div class="item-desc">Only affects users who manually configure these alternate providers. Route through oracle.js when you add them properly.</div></div></div>
+</div>

@@ -436,6 +436,38 @@ export function groupAspectsByDirection(aspects) {
   };
 }
 
+/**
+ * Generates a Composite Chart (midpoint method).
+ * Calculates the shortest-arc midpoint for each planet between chartA and chartB.
+ *
+ * @param {Object} chartA — First person's natal data
+ * @param {Object} chartB — Second person's natal data
+ * @returns {Object} A map of planet keys to their composite midpoint longitude
+ */
+export function getCompositeChart(chartA, chartB) {
+  const posA = getLongitudes(chartA);
+  const posB = getLongitudes(chartB);
+  const composite = {};
+
+  const planetsToCheck = Object.keys(PLANET_META);
+  for (const p of planetsToCheck) {
+    if (posA[p] != null && posB[p] != null) {
+      const a = posA[p];
+      const b = posB[p];
+      
+      let diff = Math.abs(a - b);
+      let mid = (a + b) / 2;
+      
+      if (diff > 180) {
+        mid = (mid + 180) % 360;
+      }
+      composite[p] = parseFloat(mid.toFixed(2));
+    }
+  }
+
+  return composite;
+}
+
 // ─── Exports for UI ───────────────────────────────────────────────────────────
 
 export { PLANET_META, PERSONAL_PLANETS, ASPECTS };
